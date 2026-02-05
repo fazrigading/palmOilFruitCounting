@@ -4,10 +4,16 @@ from PIL import Image, ImageTk, ImageDraw
 import os
 import glob
 
+__author__ = "Fazri Gading"
+__copyright__ = "Copyright 2026, FGDX"
+__version__ = "1.0.0"
+__email__ = "fazrigading@gmail.com"
+__status__ = "Production"
+
 class ImageCropper:
     def __init__(self, root):
         self.root = root
-        self.root.title("Batch Image Cropper")
+        self.root.title("Gading's Batch Image Cropper")
         self.root.geometry("1000x800")
 
         self.image_folder = ""
@@ -24,7 +30,30 @@ class ImageCropper:
         self.rect_coords = [0, 0, 100, 100] # [x1, y1, x2, y2] in canvas space
         self.drag_mode = None # 'move' or 'resize'
         
+        self.author_info = {
+            "name": "Fazri Gading",
+            "version": "1.0.0",
+            "description": "Gading's Batch Image Cropper (FGDX)",
+            "contact": "fazrigading@gmail.com"
+        }
+        
         self.setup_ui()
+        self.setup_menu()
+
+    def setup_menu(self):
+        menubar = tk.Menu(self.root)
+        self.root.config(menu=menubar)
+        
+        help_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Help", menu=help_menu)
+        help_menu.add_command(label="About", command=self.show_about)
+
+    def show_about(self):
+        about_text = f"{self.author_info['description']}\n\n" \
+                     f"Author: {self.author_info['name']}\n" \
+                     f"Version: {self.author_info['version']}\n" \
+                     f"Contact: {self.author_info['contact']}"
+        messagebox.showinfo("About", about_text)
 
     def setup_ui(self):
         # Top Panel: Folder Selection
