@@ -60,5 +60,5 @@ pyinstaller --onefile --noconsole --name "gadings-batch-image-cropper" --version
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 👤 Author
-**Gading** (FGDX)  
-Contact: [gading@example.com](mailto:gading@example.com)
+**Fazri Gading** (FGDX)  
+Contact: [fazrigading@gmail.com](mailto:fazrigading@gmail.com)
