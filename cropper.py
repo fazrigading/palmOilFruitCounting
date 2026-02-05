@@ -33,7 +33,7 @@ class ImageCropper:
         self.author_info = {
             "name": "Fazri Gading",
             "version": "1.0.0",
-            "description": "Gading's Batch Image Cropper (FGDX)",
+            "description": "gadings-batch-image-cropper (FGDX)",
             "contact": "fazrigading@gmail.com"
         }
         
