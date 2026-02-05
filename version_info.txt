@@ -21,9 +21,9 @@ VSVersionInfo(
         [StringStruct(u'CompanyName', u'FGDX'),
         StringStruct(u'FileDescription', u"Gading's Batch Image Cropper"),
         StringStruct(u'FileVersion', u'1.0.0'),
-        StringStruct(u'InternalName', u'batch-image-cropper'),
+        StringStruct(u'InternalName', u'gadings-batch-image-cropper'),
         StringStruct(u'LegalCopyright', u'Copyright (c) 2026 Gading (FGDX)'),
-        StringStruct(u'OriginalFilename', u'batch-image-cropper.exe'),
+        StringStruct(u'OriginalFilename', u'gadings-batch-image-cropper.exe'),
         StringStruct(u'ProductName', u"Gading's Batch Image Cropper"),
         StringStruct(u'ProductVersion', u'1.0.0')])
       ]), 
