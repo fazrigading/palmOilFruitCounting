@@ -44,6 +44,12 @@ class ImageCropper:
         menubar = tk.Menu(self.root)
         self.root.config(menu=menubar)
         
+        shortcut_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Shortcuts", menu=shortcut_menu)
+        shortcut_menu.add_command(label="Crop & Next: Enter / Right-Click", state=tk.DISABLED)
+        shortcut_menu.add_command(label="Cycle Aspect Ratio: Scroll Wheel", state=tk.DISABLED)
+        shortcut_menu.add_command(label="Navigate: Prev/Next buttons", state=tk.DISABLED)
+
         help_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Help", menu=help_menu)
         help_menu.add_command(label="About", command=self.show_about)
@@ -56,41 +62,19 @@ class ImageCropper:
         messagebox.showinfo("About", about_text)
 
     def setup_ui(self):
-        # Top Panel: Folder Selection
-        top_frame = tk.Frame(self.root, pady=10)
-        top_frame.pack(side=tk.TOP, fill=tk.X)
-        
-        tk.Button(top_frame, text="Select Image Folder", command=self.select_folder).pack(side=tk.LEFT, padx=10)
-        self.folder_label = tk.Label(top_frame, text="No folder selected", fg="gray")
-        self.folder_label.pack(side=tk.LEFT, padx=10)
-
-        # Config Panel
-        config_frame = tk.Frame(self.root, pady=5)
-        config_frame.pack(side=tk.TOP, fill=tk.X)
-        
-        tk.Label(config_frame, text="Aspect Ratio:").pack(side=tk.LEFT, padx=5)
-        self.aspect_var = tk.StringVar(value="Free")
-        aspect_options = ["Free", "1:1", "2:3", "3:4", "4:5","9:16", "3:2", "4:3", "5:4", "16:9"]
-        self.aspect_menu = ttk.Combobox(config_frame, textvariable=self.aspect_var, values=aspect_options, width=10)
-        self.aspect_menu.pack(side=tk.LEFT, padx=5)
-        self.aspect_menu.bind("<<ComboboxSelected>>", self.on_config_change)
-
-        tk.Label(config_frame, text="Crop Size:").pack(side=tk.LEFT, padx=5)
-        self.crop_size_label = tk.Label(config_frame, text="0 x 0", font=("Arial", 10, "bold"), fg="blue")
-        self.crop_size_label.pack(side=tk.LEFT, padx=5)
-
-        # Main Preview Area
-        self.preview_container = tk.Frame(self.root, bg="black")
-        self.preview_container.pack(expand=True, fill=tk.BOTH, padx=10, pady=10)
-
-        self.canvas = tk.Canvas(self.preview_container, bg="gray20", highlightthickness=0)
-        self.canvas.pack(expand=True, fill=tk.BOTH)
-        
+        # ... (rest of the code remains similar until bindings)
         self.canvas.bind("<ButtonPress-1>", self.on_press)
         self.canvas.bind("<B1-Motion>", self.on_drag)
         
+        # New Bindings
+        self.root.bind("<Return>", self.save_and_next)
+        self.canvas.bind("<Button-3>", self.save_and_next)
+        self.root.bind("<MouseWheel>", self.on_scroll) # Windows/macOS
+        self.root.bind("<Button-4>", self.on_scroll)   # Linux Scroll Up
+        self.root.bind("<Button-5>", self.on_scroll)   # Linux Scroll Down
+        
         # Status Label (Cropped ✅)
-        self.status_label = tk.Label(self.root, text="Cropped ✅", bg="green", fg="white", font=("Arial", 12, "bold"), pady=5)
+        self.status_label = tk.Label(self.root, text="Cropped ✅", bg="green", fg="white", font=("Arial", 10, "bold"), padx=10, pady=5)
         # We'll place it using place() when needed
 
         # Bottom Panel: Navigation
@@ -116,21 +100,47 @@ class ImageCropper:
             self.folder_label.config(text=folder, fg="black")
             
             extensions = ['*.jpg', '*.jpeg', '*.png', '*.bmp']
-            self.image_list = []
+            self.all_images = []
             for ext in extensions:
-                self.image_list.extend(glob.glob(os.path.join(folder, ext)))
+                self.all_images.extend(glob.glob(os.path.join(folder, ext)))
             
-            self.image_list.sort()
-            
-            if self.image_list:
-                self.current_index = 0
-                self.load_image()
-                self.update_nav_buttons()
-            else:
-                messagebox.showinfo("No Images", "No images found in the selected folder.")
+            self.all_images.sort()
+            self.refresh_image_list()
+
+    def refresh_image_list(self):
+        if not hasattr(self, 'all_images') or not self.all_images:
+            return
+
+        current_img = self.image_list[self.current_index] if self.current_index >= 0 and self.image_list else None
+        
+        if self.hide_cropped_var.get():
+            self.image_list = []
+            for img_path in self.all_images:
+                base_name = os.path.basename(img_path)
+                cropped_path = os.path.join(self.image_folder, "cropped", base_name)
+                if not os.path.exists(cropped_path):
+                    self.image_list.append(img_path)
+        else:
+            self.image_list = list(self.all_images)
+
+        # Update current index
+        if current_img in self.image_list:
+            self.current_index = self.image_list.index(current_img)
+        else:
+            self.current_index = 0 if self.image_list else -1
+        
+        if self.image_list:
+            self.load_image()
+            self.update_nav_buttons()
+        else:
+            self.original_image = None
+            self.canvas.delete("all")
+            self.info_label.config(text="0 / 0")
+            self.status_label.place_forget()
+            self.update_nav_buttons()
 
     def load_image(self):
-        if not self.image_list: return
+        if not self.image_list or self.current_index == -1: return
         
         img_path = self.image_list[self.current_index]
         self.original_image = Image.open(img_path)
@@ -190,10 +200,14 @@ class ImageCropper:
         self.check_if_cropped()
 
     def check_if_cropped(self):
+        if not self.image_list or self.current_index == -1:
+            self.status_label.place_forget()
+            return
+            
         base_name = os.path.basename(self.image_list[self.current_index])
         cropped_path = os.path.join(self.image_folder, "cropped", base_name)
         if os.path.exists(cropped_path):
-            self.status_label.place(relx=0.5, y=50, anchor=tk.CENTER)
+            self.status_label.place(relx=1.0, x=-10, y=10, anchor=tk.NE)
         else:
             self.status_label.place_forget()
 
@@ -318,6 +332,29 @@ class ImageCropper:
         # When aspect ratio changes, reset selection to fit ratio
         self.load_image()
 
+    def save_and_next(self, event=None):
+        if self.btn_crop['state'] == tk.NORMAL:
+            self.save_crop()
+            self.next_image()
+
+    def on_scroll(self, event):
+        options = list(self.aspect_menu['values'])
+        current = self.aspect_var.get()
+        try:
+            idx = options.index(current)
+        except ValueError:
+            idx = 0
+            
+        if event.num == 4 or (hasattr(event, 'delta') and event.delta > 0): # Scroll Up
+            idx = (idx - 1) % len(options)
+        elif event.num == 5 or (hasattr(event, 'delta') and event.delta < 0): # Scroll Down
+            idx = (idx + 1) % len(options)
+        else:
+            return
+
+        self.aspect_var.set(options[idx])
+        self.on_config_change(None)
+
     def save_crop(self):
         if not self.original_image: return
         
@@ -338,7 +375,7 @@ class ImageCropper:
         save_path = os.path.join(output_dir, base_name)
         cropped_img.save(save_path)
         
-        self.status_label.place(relx=0.5, y=50, anchor=tk.CENTER)
+        self.status_label.place(relx=1.0, x=-10, y=10, anchor=tk.NE)
         print(f"Saved: {save_path}")
 
     def next_image(self):
