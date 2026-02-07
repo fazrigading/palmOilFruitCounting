@@ -1,0 +1,18 @@
+# Core dependencies for data processing and manual cropping
+numpy
+Pillow
+opencv-python
+
+# Dependencies for Automatic Annotation (SAM)
+torch
+torchvision
+tqdm
+pycocotools
+matplotlib
+onnx
+onnxruntime
+
+# Note: segment-anything should be installed directly from GitHub for the latest version:
+# pip install git+https://github.com/facebookresearch/segment-anything.git
+# Or via pip if available on your environment:
+# segment-anything
