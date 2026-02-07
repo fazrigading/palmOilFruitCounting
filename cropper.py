@@ -75,15 +75,9 @@ class ImageCropper:
         self.aspect_menu.pack(side=tk.LEFT, padx=5)
         self.aspect_menu.bind("<<ComboboxSelected>>", self.on_config_change)
 
-        tk.Label(config_frame, text="Min Width:").pack(side=tk.LEFT, padx=5)
-        self.min_w_ent = tk.Entry(config_frame, width=5)
-        self.min_w_ent.insert(0, "640")
-        self.min_w_ent.pack(side=tk.LEFT, padx=5)
-
-        tk.Label(config_frame, text="Min Height:").pack(side=tk.LEFT, padx=5)
-        self.min_h_ent = tk.Entry(config_frame, width=5)
-        self.min_h_ent.insert(0, "640")
-        self.min_h_ent.pack(side=tk.LEFT, padx=5)
+        tk.Label(config_frame, text="Crop Size:").pack(side=tk.LEFT, padx=5)
+        self.crop_size_label = tk.Label(config_frame, text="0 x 0", font=("Arial", 10, "bold"), fg="blue")
+        self.crop_size_label.pack(side=tk.LEFT, padx=5)
 
         # Main Preview Area
         self.preview_container = tk.Frame(self.root, bg="black")
@@ -210,6 +204,11 @@ class ImageCropper:
         x1, y1, x2, y2 = self.rect_coords
         self.crop_rect_id = self.canvas.create_rectangle(x1, y1, x2, y2, outline="yellow", width=2, dash=(4, 4))
         
+        # Calculate and display current crop size in original pixels
+        orig_w = int((x2 - x1) / self.scale)
+        orig_h = int((y2 - y1) / self.scale)
+        self.crop_size_label.config(text=f"{orig_w} x {orig_h}")
+
         # Add handles at all corners
         self.canvas.delete("handle")
         h_size = 5
@@ -332,14 +331,6 @@ class ImageCropper:
         
         cropped_img = self.original_image.crop((orig_x1, orig_y1, orig_x2, orig_y2))
         
-        # Resize if min dimensions specified
-        try:
-            tw = int(self.min_w_ent.get())
-            th = int(self.min_h_ent.get())
-            cropped_img = cropped_img.resize((tw, th), Image.Resampling.LANCZOS)
-        except:
-            pass
-            
         output_dir = os.path.join(self.image_folder, "cropped")
         os.makedirs(output_dir, exist_ok=True)
         
