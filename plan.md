@@ -16,13 +16,12 @@ Since data is collected via mobile phones, variability in quality, lighting, and
 - **Metadata:** Record bunch ID and timestamp for each capture to prevent double-counting in large datasets.
 
 ### 2.2 Data Annotation
-- **Tools:** Use tools like CVAT, LabelImg, or Roboflow.
+- **Tools:** SAM (Segment Anything Model) by Meta or manual labeling by experienced fruit experts.
 - **Labeling Method:**
     - *Bounding Boxes:* Standard for object detection (YOLO, etc.) of individual fruits.
     - *Instance Segmentation:* (Optional) Useful if fruits are highly clustered and need precise separation.
 - **Classes:**
     - `Fruit` (Individual palm oil fruit).
-    - `Occluded_Fruit` (Optional: to train model to recognize partially hidden fruits within the bunch).
 
 ### 2.3 Preprocessing & Augmentation
 - **Resizing:** Resize to model input standard (e.g., 640x640).
