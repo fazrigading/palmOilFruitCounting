@@ -2,6 +2,8 @@
 numpy
 Pillow
 opencv-python
+albumentations
+tqdm
 
 # Dependencies for Automatic Annotation (SAM)
 torch
