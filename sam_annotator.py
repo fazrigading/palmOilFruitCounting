@@ -78,7 +78,7 @@ def process_images(image_dir, output_dir, config=None, model_type="tiny", checkp
     else:
         config_file = config
         
-    if device.type == "cuda":
+    if device == "cuda":
         # use bfloat16 for the entire notebook
         torch.autocast("cuda", dtype=torch.bfloat16).__enter__()
         # turn on tfloat32 for Ampere GPUs (https://pytorch.org/docs/stable/notes/cuda.html#tensorfloat-32-tf32-on-ampere-devices)
