@@ -3,6 +3,7 @@ import cv2
 import albumentations as A
 from tqdm import tqdm
 import glob
+import argparse
 
 def augment_images(input_dir, output_dir, target_size=640):
     """
@@ -54,6 +55,11 @@ def augment_images(input_dir, output_dir, target_size=640):
         cv2.imwrite(save_path, augmented_bgr)
 
 if __name__ == "__main__":
-    input_folder = "dataset/cropped/"
-    output_folder = "dataset/augmented/"
-    augment_images(input_folder, output_folder)
+    parser = argparse.ArgumentParser(description="Augment images for dataset preparation.")
+    parser.add_argument("--input", type=str, default="dataset/cropped/", help="Path to input directory")
+    parser.add_argument("--output", type=str, default="dataset/augmented/", help="Path to output directory")
+    parser.add_argument("--size", type=int, default=640, help="Target image size (default: 640)")
+
+    args = parser.parse_args()
+
+    augment_images(args.input, args.output, args.size)
