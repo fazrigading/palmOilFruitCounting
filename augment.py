@@ -21,7 +21,7 @@ def augment_images(input_dir, output_dir, target_size=640):
             min_height=target_size,
             min_width=target_size,
             border_mode=cv2.BORDER_CONSTANT,
-            value=[255, 255, 255]
+            cval=[255, 255, 255]
         )
     ])
 
