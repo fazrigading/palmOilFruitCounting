@@ -52,7 +52,7 @@ def save_yolo_segmentation(masks, img_w, img_h, output_path):
                 
                 f.write(f"0 {' '.join(normalized_points)}\n")
 
-def process_images(image_dir, output_dir, config, model_type="tiny", checkpoint=None, device="cuda"):
+def process_images(image_dir, output_dir, config=None, model_type="tiny", checkpoint=None, device="cuda"):
     # SAM2 Model configurations: (config_file, default_checkpoint, download_url)
     sam2_configs = {
         "tiny": ("sam2_hiera_t.yaml", "sam2_hiera_tiny.pt", "https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_tiny.pt"),
@@ -64,28 +64,47 @@ def process_images(image_dir, output_dir, config, model_type="tiny", checkpoint=
     if model_type not in sam2_configs:
         print(f"Error: Model type '{model_type}' not supported. Choose from {list(sam2_configs.keys())}")
         return
-    if config:
-        config_file = config
-    else:
+      
+    if config is None:
         config_file, default_ckpt, url = sam2_configs[model_type]
-    
-    if checkpoint is None:
-        checkpoint = default_ckpt
-
-    # Check and download checkpoint if missing
-    if not os.path.exists(checkpoint):
-        print(f"Downloading {model_type} checkpoint to {checkpoint}...")
-        torch.hub.download_url_to_file(url, checkpoint)
+        if checkpoint is None:
+            checkpoint = default_ckpt
+            print("checkpoint uses default ckpt")
+            
+        # Check and download checkpoint if missing
+        if not os.path.exists(checkpoint):
+            print(f"Downloading {model_type} checkpoint to {checkpoint}...")
+            torch.hub.download_url_to_file(url, checkpoint)
+    else:
+        config_file = config
+        
+    if device.type == "cuda":
+        # use bfloat16 for the entire notebook
+        torch.autocast("cuda", dtype=torch.bfloat16).__enter__()
+        # turn on tfloat32 for Ampere GPUs (https://pytorch.org/docs/stable/notes/cuda.html#tensorfloat-32-tf32-on-ampere-devices)
+        if torch.cuda.get_device_properties(0).major >= 8:
+            torch.backends.cuda.matmul.allow_tf32 = True
+            torch.backends.cudnn.allow_tf32 = True
 
     # Initialize SAM2
     print(f"Loading SAM2 model ({model_type}) from {checkpoint} on {device}...")
-    sam = build_sam2(config_file, checkpoint, device=device,apply_postprocessing=False)
+    # Build model without loading checkpoint automatically to avoid strict key checking errors
+    sam2 = build_sam2(config_file, ckpt_path=None, device=device)
+    
+    if checkpoint:
+        state_dict = torch.load(checkpoint, map_location=device)
+        # SAM2 checkpoints might be wrapped in "model" key
+        if "model" in state_dict:
+            state_dict = state_dict["model"]
+        sam2.load_state_dict(state_dict, strict=False)
     
     mask_generator = SAM2AutomaticMaskGenerator(
-        model=sam,
+        model=sam2,
         points_per_side=32,
-        pred_iou_thresh=0.88,
-        stability_score_thresh=0.95,
+        points_per_batch=128,
+        pred_iou_thresh=0.7,
+        stability_score_thresh=0.92,
+        stability_score_offset=0.7,
         crop_n_layers=1,
         crop_n_points_downscale_factor=2,
         min_mask_region_area=100,  # Filter out very small segments
