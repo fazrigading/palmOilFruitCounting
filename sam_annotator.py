@@ -52,7 +52,7 @@ def save_yolo_segmentation(masks, img_w, img_h, output_path):
                 
                 f.write(f"0 {' '.join(normalized_points)}\n")
 
-def process_images(image_dir, output_dir, model_type="large", checkpoint=None, device="cuda"):
+def process_images(image_dir, output_dir, config, model_type="tiny", checkpoint=None, device="cuda"):
     # SAM2 Model configurations: (config_file, default_checkpoint, download_url)
     sam2_configs = {
         "tiny": ("sam2_hiera_t.yaml", "sam2_hiera_tiny.pt", "https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_tiny.pt"),
@@ -64,8 +64,11 @@ def process_images(image_dir, output_dir, model_type="large", checkpoint=None, d
     if model_type not in sam2_configs:
         print(f"Error: Model type '{model_type}' not supported. Choose from {list(sam2_configs.keys())}")
         return
-
-    config_file, default_ckpt, url = sam2_configs[model_type]
+    if config:
+        config_file = config
+    else:
+        config_file, default_ckpt, url = sam2_configs[model_type]
+    
     if checkpoint is None:
         checkpoint = default_ckpt
 
@@ -76,7 +79,7 @@ def process_images(image_dir, output_dir, model_type="large", checkpoint=None, d
 
     # Initialize SAM2
     print(f"Loading SAM2 model ({model_type}) from {checkpoint} on {device}...")
-    sam = build_sam2(config_file, checkpoint, device=device)
+    sam = build_sam2(config_file, checkpoint, device=device,apply_postprocessing=False)
     
     mask_generator = SAM2AutomaticMaskGenerator(
         model=sam,
@@ -125,10 +128,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="SAM Automatic Annotator for Palm Oil Fruit")
     parser.add_argument("--input", type=str, default="dataset", help="Path to images directory")
     parser.add_argument("--output", type=str, default="dataset/sam_annotations", help="Path to output directory")
-    parser.add_argument("--checkpoint", type=str, default=None, help="Path to SAM2 checkpoint (optional)")
-    parser.add_argument("--model-type", type=str, default="large", help="SAM2 model type (tiny, small, base_plus, large)")
+    parset.add_argument("--config", type=str, default="sam2_hiera_t.yaml", help="Path to SAM2 config file (default: tiny)")
+    parser.add_argument("--checkpoint", type=str, default="sam2_hiera_tiny.pt", help="Path to SAM2 checkpoint (default: tiny)")
+    parser.add_argument("--model-type", type=str, default="tiny", help="SAM2 model type (tiny, small, base_plus, large)")
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device to run on")
     
     args = parser.parse_args()
     
-    process_images(args.input, args.output, args.model_type, args.checkpoint, args.device)
+    process_images(args.input, args.output, args.config, args.model_type, args.checkpoint, args.device)
