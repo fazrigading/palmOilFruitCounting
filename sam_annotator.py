@@ -4,12 +4,13 @@ import torch
 import numpy as np
 import argparse
 from tqdm import tqdm
-from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
+from sam2.build_sam import build_sam2
+from sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
 
 # Instructions for Cloud Notebook (Colab/Kaggle):
-# !pip install git+https://github.com/facebookresearch/segment-anything.git
+# !pip install git+https://github.com/facebookresearch/sam2.git
 # !pip install opencv-python pycocotools matplotlib onnxruntime onnx
-# !wget https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth
+# !wget https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_large.pt
 
 def save_yolo_bbox(masks, img_w, img_h, output_path):
     """Saves masks as YOLO detection format (class_id center_x center_y width height)."""
@@ -51,13 +52,33 @@ def save_yolo_segmentation(masks, img_w, img_h, output_path):
                 
                 f.write(f"0 {' '.join(normalized_points)}\n")
 
-def process_images(image_dir, output_dir, model_type="vit_h", checkpoint="sam_vit_h_4b8939.pth", device="cuda"):
-    # Initialize SAM
-    print(f"Loading SAM model ({model_type}) on {device}...")
-    sam = sam_model_registry[model_type](checkpoint=checkpoint)
-    sam.to(device=device)
+def process_images(image_dir, output_dir, model_type="large", checkpoint=None, device="cuda"):
+    # SAM2 Model configurations: (config_file, default_checkpoint, download_url)
+    sam2_configs = {
+        "tiny": ("sam2_hiera_t.yaml", "sam2_hiera_tiny.pt", "https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_tiny.pt"),
+        "small": ("sam2_hiera_s.yaml", "sam2_hiera_small.pt", "https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_small.pt"),
+        "base_plus": ("sam2_hiera_b+.yaml", "sam2_hiera_base_plus.pt", "https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_base_plus.pt"),
+        "large": ("sam2_hiera_l.yaml", "sam2_hiera_large.pt", "https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_large.pt"),
+    }
+
+    if model_type not in sam2_configs:
+        print(f"Error: Model type '{model_type}' not supported. Choose from {list(sam2_configs.keys())}")
+        return
+
+    config_file, default_ckpt, url = sam2_configs[model_type]
+    if checkpoint is None:
+        checkpoint = default_ckpt
+
+    # Check and download checkpoint if missing
+    if not os.path.exists(checkpoint):
+        print(f"Downloading {model_type} checkpoint to {checkpoint}...")
+        torch.hub.download_url_to_file(url, checkpoint)
+
+    # Initialize SAM2
+    print(f"Loading SAM2 model ({model_type}) from {checkpoint} on {device}...")
+    sam = build_sam2(config_file, checkpoint, device=device)
     
-    mask_generator = SamAutomaticMaskGenerator(
+    mask_generator = SAM2AutomaticMaskGenerator(
         model=sam,
         points_per_side=32,
         pred_iou_thresh=0.88,
@@ -104,8 +125,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="SAM Automatic Annotator for Palm Oil Fruit")
     parser.add_argument("--input", type=str, default="dataset", help="Path to images directory")
     parser.add_argument("--output", type=str, default="dataset/sam_annotations", help="Path to output directory")
-    parser.add_argument("--checkpoint", type=str, default="sam_vit_h_4b8939.pth", help="Path to SAM checkpoint")
-    parser.add_argument("--model-type", type=str, default="vit_h", help="SAM model type (vit_h, vit_l, vit_b)")
+    parser.add_argument("--checkpoint", type=str, default=None, help="Path to SAM2 checkpoint (optional)")
+    parser.add_argument("--model-type", type=str, default="large", help="SAM2 model type (tiny, small, base_plus, large)")
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device to run on")
     
     args = parser.parse_args()
