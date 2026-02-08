@@ -1,5 +1,6 @@
-# Vscode
+# Workspace Folder
 .vscode/
+.gemini
 
 # Python
 __pycache__/

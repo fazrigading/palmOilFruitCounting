@@ -62,7 +62,40 @@ class ImageCropper:
         messagebox.showinfo("About", about_text)
 
     def setup_ui(self):
-        # ... (rest of the code remains similar until bindings)
+        # Top Panel: Folder Selection
+        top_frame = tk.Frame(self.root, pady=10)
+        top_frame.pack(side=tk.TOP, fill=tk.X)
+        
+        tk.Button(top_frame, text="Select Image Folder", command=self.select_folder).pack(side=tk.LEFT, padx=10)
+        self.folder_label = tk.Label(top_frame, text="No folder selected", fg="gray")
+        self.folder_label.pack(side=tk.LEFT, padx=10)
+
+        # Config Panel
+        config_frame = tk.Frame(self.root, pady=5)
+        config_frame.pack(side=tk.TOP, fill=tk.X)
+        
+        tk.Label(config_frame, text="Aspect Ratio:").pack(side=tk.LEFT, padx=5)
+        self.aspect_var = tk.StringVar(value="Free")
+        aspect_options = ["Free", "1:1", "4:5", "3:4", "2:3", "9:16", "3:2", "4:3", "5:4", "16:9"]
+        self.aspect_menu = ttk.Combobox(config_frame, textvariable=self.aspect_var, values=aspect_options, width=10)
+        self.aspect_menu.pack(side=tk.LEFT, padx=5)
+        self.aspect_menu.bind("<<ComboboxSelected>>", self.on_config_change)
+
+        tk.Label(config_frame, text="Crop Size:").pack(side=tk.LEFT, padx=5)
+        self.crop_size_label = tk.Label(config_frame, text="0 x 0", font=("Arial", 10, "bold"), fg="blue")
+        self.crop_size_label.pack(side=tk.LEFT, padx=5)
+
+        self.hide_cropped_var = tk.BooleanVar(value=False)
+        self.hide_cropped_chk = tk.Checkbutton(config_frame, text="Hide Cropped", variable=self.hide_cropped_var, command=self.refresh_image_list)
+        self.hide_cropped_chk.pack(side=tk.LEFT, padx=20)
+
+        # Main Preview Area
+        self.preview_container = tk.Frame(self.root, bg="black")
+        self.preview_container.pack(expand=True, fill=tk.BOTH, padx=10, pady=10)
+
+        self.canvas = tk.Canvas(self.preview_container, bg="gray20", highlightthickness=0)
+        self.canvas.pack(expand=True, fill=tk.BOTH)
+        
         self.canvas.bind("<ButtonPress-1>", self.on_press)
         self.canvas.bind("<B1-Motion>", self.on_drag)
         

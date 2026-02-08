@@ -8,10 +8,21 @@ Included in this repository is **Gading's Batch Image Cropper**, a specialized G
 
 ### Key Features
 - **Batch Processing:** Easily navigate through large folders of images.
-- **Aspect Ratio Locking:** Choose from standard ratios (1:1, 16:9, etc.) or use "Free" mode.
-- **Smart Resizing:** Automatically resize cropped images to target dimensions (default 640x640).
-- **Progress Tracking:** High-visibility "Cropped ✅" indicators show which images are already processed.
+- **Efficiency Shortcuts:** Use `Enter` or `Right-Click` to **Save & Next** in one action.
+- **Scroll Wheel Selection:** Cycle through aspect ratios (1:1, 16:9, etc.) using the mouse wheel.
+- **Hide Cropped Filter:** Toggle visibility of already processed images to focus on remaining work.
+- **Original Resolution:** Saves crops at their actual pixel dimensions (no forced resizing).
+- **Progress Tracking:** High-visibility "Cropped ✅" indicator in the top-right corner.
 - **Cross-Platform:** Runs on Windows, macOS, and Linux.
+
+---
+
+## 🆕 What's New in v1.1
+- **Enhanced Workflow:** Added `Enter` and `Right-click` shortcuts for faster processing.
+- **Smart Filtering:** New "Hide Cropped" checkbox to simplify large dataset management.
+- **UI Improvements:** Moved status indicator to top-right for better visibility.
+- **Resolution Control:** Replaced fixed 640x640 resizing with original resolution saving and live dimension feedback.
+- **Shortcuts Menu:** Added a dedicated menu for quick reference of controls.
 
 ### Usage (Developer)
 1. Install dependencies:
