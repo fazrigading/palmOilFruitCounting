@@ -128,7 +128,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="SAM Automatic Annotator for Palm Oil Fruit")
     parser.add_argument("--input", type=str, default="dataset", help="Path to images directory")
     parser.add_argument("--output", type=str, default="dataset/sam_annotations", help="Path to output directory")
-    parset.add_argument("--config", type=str, default="sam2_hiera_t.yaml", help="Path to SAM2 config file (default: tiny)")
+    parser.add_argument("--config", type=str, default="sam2_hiera_t.yaml", help="Path to SAM2 config file (default: tiny)")
     parser.add_argument("--checkpoint", type=str, default="sam2_hiera_tiny.pt", help="Path to SAM2 checkpoint (default: tiny)")
     parser.add_argument("--model-type", type=str, default="tiny", help="SAM2 model type (tiny, small, base_plus, large)")
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device to run on")
