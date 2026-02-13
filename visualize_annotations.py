@@ -5,6 +5,17 @@ import numpy as np
 import glob
 from tqdm import tqdm
 
+# BGR Colors for different classes
+COLORS = [
+    (0, 255, 0),   # Green
+    (0, 0, 255),   # Red
+    (255, 0, 0),   # Blue
+    (0, 255, 255), # Yellow
+    (255, 0, 255), # Magenta
+    (255, 255, 0), # Cyan
+    (255, 255, 255) # White
+]
+
 def draw_yolo_bbox(image, label_path):
     h, w = image.shape[:2]
     with open(label_path, 'r') as f:
@@ -14,6 +25,7 @@ def draw_yolo_bbox(image, label_path):
         parts = list(map(float, line.strip().split()))
         if len(parts) < 5: continue
         class_id = int(parts[0])
+        color = COLORS[class_id % len(COLORS)]
         cx, cy, bw, bh = parts[1], parts[2], parts[3], parts[4]
         
         x1 = int((cx - bw / 2) * w)
@@ -22,25 +34,28 @@ def draw_yolo_bbox(image, label_path):
         y2 = int((cy + bh / 2) * h)
         
         # Draw rectangle
-        cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
         
         # Draw label text
         label_text = f"Class {class_id}"
         (text_w, text_h), baseline = cv2.getTextSize(label_text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-        cv2.rectangle(image, (x1, y1 - text_h - 5), (x1 + text_w, y1), (0, 255, 0), -1)
+        cv2.rectangle(image, (x1, y1 - text_h - 5), (x1 + text_w, y1), color, -1)
         cv2.putText(image, label_text, (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
     return image
 
 def draw_yolo_seg(image, label_path):
     h, w = image.shape[:2]
+    overlay = image.copy()
     with open(label_path, 'r') as f:
         lines = f.readlines()
         
+    polygons = []
     for line in lines:
         parts = list(map(float, line.strip().split()))
         if len(parts) < 3: continue 
         
         class_id = int(parts[0])
+        color = COLORS[class_id % len(COLORS)]
         coords = parts[1:]
         
         points = []
@@ -52,13 +67,16 @@ def draw_yolo_seg(image, label_path):
         points = np.array(points, np.int32)
         points = points.reshape((-1, 1, 2))
         
-        # Draw polygon outline
-        cv2.polylines(image, [points], isClosed=True, color=(0, 0, 255), thickness=2)
-        
-        # Fill with semi-transparent color
-        overlay = image.copy()
-        cv2.fillPoly(overlay, [points], (0, 0, 255))
-        cv2.addWeighted(overlay, 0.4, image, 0.6, 0, image)
+        # Draw on overlay
+        cv2.fillPoly(overlay, [points], color)
+        polygons.append((points, color))
+            
+    # Blend overlay with original image
+    cv2.addWeighted(overlay, 0.4, image, 0.6, 0, image)
+    
+    # Draw outlines on top of the blended image for sharpness
+    for points, color in polygons:
+        cv2.polylines(image, [points], isClosed=True, color=color, thickness=2)
         
     return image
 

@@ -11,5 +11,5 @@ Pillow
 tqdm
 
 # Segment Anything Model and dependencies
-sam2
+# sam2
 matplotlib
