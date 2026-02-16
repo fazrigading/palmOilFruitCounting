@@ -11,8 +11,9 @@ __email__ = "fazrigading@gmail.com"
 __status__ = "Production"
 
 class ImageCropper:
-    def __init__(self, root):
+    def __init__(self, root, return_callback=None):
         self.root = root
+        self.return_callback = return_callback
         self.root.title("Gading's Batch Image Cropper")
         self.root.geometry("1000x800")
 
@@ -43,6 +44,12 @@ class ImageCropper:
     def setup_menu(self):
         menubar = tk.Menu(self.root)
         self.root.config(menu=menubar)
+        
+        file_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="File", menu=file_menu)
+        if self.return_callback:
+            file_menu.add_command(label="Back to Main Menu", command=self.on_return)
+        file_menu.add_command(label="Exit", command=self.root.quit)
         
         shortcut_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Shortcuts", menu=shortcut_menu)
@@ -427,6 +434,20 @@ class ImageCropper:
         self.btn_prev.config(state=tk.NORMAL if self.current_index > 0 else tk.DISABLED)
         self.btn_next.config(state=tk.NORMAL if self.current_index < len(self.image_list) - 1 else tk.DISABLED)
         self.btn_crop.config(state=tk.NORMAL)
+
+    def cleanup(self):
+        try:
+            self.root.unbind("<Return>")
+            self.root.unbind("<MouseWheel>")
+            self.root.unbind("<Button-4>")
+            self.root.unbind("<Button-5>")
+        except Exception as e:
+            print(f"Error unbinding: {e}")
+
+    def on_return(self):
+        self.cleanup()
+        if self.return_callback:
+            self.return_callback()
 
 if __name__ == "__main__":
     root = tk.Tk()
