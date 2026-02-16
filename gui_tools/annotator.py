@@ -6,6 +6,8 @@ import glob
 import cv2
 import numpy as np
 
+import json
+
 class FilterDialog(tk.Toplevel):
     def __init__(self, parent, callback):
         super().__init__(parent)
@@ -19,38 +21,79 @@ class FilterDialog(tk.Toplevel):
         self.vars = {}
         self.checks = {}
         self.entries = {}
+        self.config_file = "filter_config.json"
         
-        # Default values based on common reasonable fruits vs noise
+        # Default values
+        defaults = {
+            "max_ratio": 1.2,
+            "min_area": 0.05,
+            "max_area": 0.6,
+            "min_width": 1.0,
+            "max_width": 90.0,
+            "min_height": 1.0,
+            "max_height": 90.0
+        }
+        
+        # Load saved preferences
+        saved_prefs = self.load_prefs()
+        
         criteria = [
-            ("Max Aspect Ratio (Long/Short)", "max_ratio", "1.2"),
-            ("Min Area (%)", "min_area", "0.05"),
-            ("Max Area (%)", "max_area", "0.6"),
-            ("Min Width (%)", "min_width", "1.0"),
-            ("Max Width (%)", "max_width", "90.0"),
-            ("Min Height (%)", "min_height", "1.0"),
-            ("Max Height (%)", "max_height", "90.0"),
+            ("Max Aspect Ratio (Long/Short)", "max_ratio"),
+            ("Min Area (%)", "min_area"),
+            ("Max Area (%)", "max_area"),
+            ("Min Width (%)", "min_width"),
+            ("Max Width (%)", "max_width"),
+            ("Min Height (%)", "min_height"),
+            ("Max Height (%)", "max_height"),
         ]
         
-        # Placeholders
-        for label, key, default in criteria:
+        for label, key in criteria:
             frame = tk.Frame(self)
             frame.pack(fill=tk.X, padx=20, pady=5)
             
+            # Determine initial state and value
+            is_checked = saved_prefs.get(f"{key}_checked", True)
+            value = saved_prefs.get(key, defaults[key])
+            
             # Checkbox
-            check_var = tk.BooleanVar(value=True)
+            check_var = tk.BooleanVar(value=is_checked)
             self.checks[key] = check_var
             cb = tk.Checkbutton(frame, text=label, variable=check_var, command=lambda k=key: self.toggle_entry(k))
             cb.pack(side=tk.LEFT)
             
             # Entry
-            var = tk.StringVar(value=default)
+            var = tk.StringVar(value=str(value))
             self.vars[key] = var
             entry = tk.Entry(frame, textvariable=var, width=8)
             entry.pack(side=tk.RIGHT)
             self.entries[key] = entry
             
+            # Initialize entry state
+            entry.config(state=tk.NORMAL if is_checked else tk.DISABLED)
+            
         tk.Button(self, text="Apply Filter", command=self.apply, bg="#ffcccc").pack(pady=20, fill=tk.X, padx=50)
         
+    def load_prefs(self):
+        if os.path.exists(self.config_file):
+            try:
+                with open(self.config_file, 'r') as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"Error loading prefs: {e}")
+        return {}
+
+    def save_prefs(self):
+        prefs = {}
+        for key, var in self.vars.items():
+            prefs[key] = float(var.get()) if var.get() else 0.0
+            prefs[f"{key}_checked"] = self.checks[key].get()
+            
+        try:
+            with open(self.config_file, 'w') as f:
+                json.dump(prefs, f)
+        except Exception as e:
+            print(f"Error saving prefs: {e}")
+
     def toggle_entry(self, key):
         state = tk.NORMAL if self.checks[key].get() else tk.DISABLED
         self.entries[key].config(state=state)
@@ -63,6 +106,8 @@ class FilterDialog(tk.Toplevel):
                     values[k] = float(v.get())
                 else:
                     values[k] = None
+            
+            self.save_prefs() # Auto-save on apply
             self.callback(values)
             self.destroy()
         except ValueError:
@@ -91,12 +136,18 @@ class ImageAnnotator:
         self.selected_annotation_index = -1
         self.hovered_annotation_index = -1
         
+        # Undo/Redo Stacks
+        self.undo_stack = []
+        self.redo_stack = []
+        
         # UI State
         self.show_tooltip = True
         
         self.setup_ui()
         self.setup_menu()
         self.root.bind("<Delete>", self.delete_selected)
+        self.root.bind("<Control-z>", self.undo)
+        self.root.bind("<Control-y>", self.redo)
         self.root.bind("<Left>", lambda e: self.prev_image())
         self.root.bind("<Right>", lambda e: self.next_image())
 
@@ -114,6 +165,11 @@ class ImageAnnotator:
              file_menu.add_command(label="Back to Main Menu", command=self.return_to_main)
         file_menu.add_command(label="Exit", command=self.root.quit)
         
+        edit_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Edit", menu=edit_menu)
+        edit_menu.add_command(label="Undo", command=self.undo, accelerator="Ctrl+Z")
+        edit_menu.add_command(label="Redo", command=self.redo, accelerator="Ctrl+Y")
+        
         view_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="View", menu=view_menu)
         view_menu.add_command(label="Refresh", command=self.load_image)
@@ -129,6 +185,10 @@ class ImageAnnotator:
         
         # Filter Button
         tk.Button(toolbar, text="Filter Unwanted", command=self.open_filter_dialog).pack(side=tk.LEFT, padx=2, pady=2)
+        
+        # Undo/Redo Buttons
+        tk.Button(toolbar, text="Undo", command=self.undo).pack(side=tk.LEFT, padx=5, pady=2)
+        tk.Button(toolbar, text="Redo", command=self.redo).pack(side=tk.LEFT, padx=2, pady=2)
         
         tk.Frame(toolbar, width=20).pack(side=tk.LEFT) # Spacer
         
@@ -396,8 +456,61 @@ class ImageAnnotator:
                 self.hovered_annotation_index = -1
                 self.redraw()
 
+    def save_state(self):
+        """Save current state to undo stack."""
+        # Deep copy is not strictly necessary if we create new lists, but for safety with dicts:
+        current_state = []
+        for ann in self.annotations:
+            current_state.append(ann.copy())
+        
+        self.undo_stack.append(current_state)
+        self.redo_stack.clear() # Clear redo stack on new action
+        
+        # Limit stack size to prevent memory issues
+        if len(self.undo_stack) > 50:
+            self.undo_stack.pop(0)
+
+    def undo(self, event=None):
+        if not self.undo_stack:
+            self.status_bar.config(text="Nothing to undo.")
+            return
+        
+        # Save current state to redo stack
+        current_state = []
+        for ann in self.annotations:
+            current_state.append(ann.copy())
+        self.redo_stack.append(current_state)
+        
+        # Restore last state
+        self.annotations = self.undo_stack.pop()
+        self.selected_annotation_index = -1
+        self.update_listbox()
+        self.update_properties_panel()
+        self.redraw()
+        self.status_bar.config(text="Undo successful.")
+
+    def redo(self, event=None):
+        if not self.redo_stack:
+            self.status_bar.config(text="Nothing to redo.")
+            return
+            
+        # Save current state to undo stack
+        current_state = []
+        for ann in self.annotations:
+            current_state.append(ann.copy())
+        self.undo_stack.append(current_state)
+        
+        # Restore next state
+        self.annotations = self.redo_stack.pop()
+        self.selected_annotation_index = -1
+        self.update_listbox()
+        self.update_properties_panel()
+        self.redraw()
+        self.status_bar.config(text="Redo successful.")
+
     def delete_selected(self, event=None):
         if self.selected_annotation_index != -1:
+            self.save_state() # Save before delete
             del self.annotations[self.selected_annotation_index]
             self.selected_annotation_index = -1
             self.save_annotations()
@@ -437,6 +550,9 @@ class ImageAnnotator:
 
     def load_annotations_from_file(self, img_path):
         self.annotations = []
+        self.undo_stack.clear() # Clear stacks for new image
+        self.redo_stack.clear()
+        
         label_path = self.get_annotation_path(img_path)
         
         if os.path.exists(label_path):
@@ -583,6 +699,7 @@ class ImageAnnotator:
               f"IDs: {to_remove}\nProceed?"
           )
           if confirm:
+              self.save_state() # Save before filter removal
               # Remove in reverse order to keep indices valid
               for idx in sorted(to_remove, reverse=True):
                   del self.annotations[idx]
