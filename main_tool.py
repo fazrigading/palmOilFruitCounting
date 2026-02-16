@@ -44,13 +44,13 @@ class MainLauncher:
         btn_frame = tk.Frame(self.root)
         btn_frame.pack(expand=True, fill=tk.BOTH, padx=50)
         
-        tk.Button(btn_frame, text="📸 Image Cropper", font=("Arial", 12), 
+        tk.Button(btn_frame, text="Image Cropper", font=("Arial", 12), 
                   command=self.launch_cropper, height=2).pack(fill=tk.X, pady=10)
         
-        tk.Button(btn_frame, text="✏️ Image Annotator", font=("Arial", 12), 
+        tk.Button(btn_frame, text="Image Annotator", font=("Arial", 12), 
                   command=self.launch_annotator, height=2).pack(fill=tk.X, pady=10)
         
-        tk.Button(btn_frame, text="❌ Exit", font=("Arial", 12), 
+        tk.Button(btn_frame, text="Exit", font=("Arial", 12), 
                   command=self.root.quit, height=2, bg="#ffcccc").pack(fill=tk.X, pady=20)
         
         # Footer
