@@ -13,15 +13,15 @@ Since data is collected via mobile phones, variability in quality, lighting, and
 - **Lighting:** Collect data at different times of day (morning, noon, evening) to account for shadows and backlight within the bunch structure.
 - **Conditions:** Include various weather conditions (sunny, cloudy).
 - **Distances:** Capture from varying close-up distances (0.5m - 1.5m) to ensure fruits are clearly visible.
-- **Metadata:** Record bunch ID and timestamp for each capture to prevent double-counting in large datasets.
 
-### 2.2 Data Annotation
-- **Tools:** SAM (Segment Anything Model) by Meta or manual labeling by experienced fruit experts.
-- **Labeling Method:**
-    - *Bounding Boxes:* Standard for object detection (YOLO, etc.) of individual fruits.
-    - *Instance Segmentation:* (Optional) Useful if fruits are highly clustered and need precise separation.
-- **Classes:**
-    - `Fruit` (Individual palm oil fruit).
+### 2.2 Data Annotation Pipeline
+We have developed a robust hybrid pipeline for annotating fruitlets:
+1. **Cropping:** Using `gui_tools/cropper.py` to batch crop images to focal areas.
+2. **Auto-Annotation (SAM2):** Using `sam_annotator.py` to automatically generate highly accurate polygon masks. This script includes custom filtering logic (color and Shape metrics) to isolate only the target fruitlets (red-orangeish and black-maroonish) and discard background elements (sky, leaves).
+3. **Manual Review/Correction:** Using `gui_tools/annotator.py` to load images and their generated YOLO `.txt` labels, filtering out any remaining noisy annotations and adjusting boundaries if necessary.
+
+**Classes:**
+- `0: Fruit` (Individual palm oil fruit).
 
 ### 2.3 Preprocessing & Augmentation
 - **Resizing:** Resize to model input standard (e.g., 640x640).
@@ -29,38 +29,37 @@ Since data is collected via mobile phones, variability in quality, lighting, and
     - Random brightness/contrast (crucial for outdoor settings).
     - Hue/Saturation changes (to handle different camera color profiles and ripeness variations).
     - Mosaic augmentation (popular with YOLO to detect small objects like fruits).
-    - Random rotation/flip.
 
 ## 3. Model Selection
 Prioritize models that balance accuracy with inference speed, considering potential mobile deployment for real-time counting.
 
 ### 3.1 Recommended Architectures
-- **YOLOv8 / YOLO11 (Ultralytics):** State-of-the-art for real-time detection. Good balance of speed and accuracy for small object detection (fruits).
-- **EfficientDet-Lite:** Optimized for mobile and edge devices.
-- **MobileNetV2 + SSD:** Lightweight, older but very fast on legacy devices.
+- **YOLOv8 / YOLO11 (Ultralytics):** State-of-the-art for real-time detection and instance segmentation. Good balance of speed and accuracy for small object detection. Since we have high-quality SAM segmentations, training a YOLO instance segmentation model is highly viable.
+- **EfficientDet-Lite / MobileNetV2 + SSD:** Lightweight alternatives for legacy edge devices.
 
 ### 3.2 Counting Logic
-- **Simple Detection:** Count number of bounding boxes per image.
-- **Tracking (Video):** If input is video, use MOT (Multi-Object Tracking) like ByteTrack or StrongSORT to count unique fruits as the camera moves around the bunch, preventing double counting of the same fruit.
+- **Simple Detection:** Count number of bounding boxes or masks per image.
+- **Tracking (Video):** If input is video, use MOT (Multi-Object Tracking) like ByteTrack/StrongSORT to count unique fruits as the camera moves.
 
 ## 4. Development Workflow
 
-### Phase 1: Setup & Data
-1.  Initialize repository.
-2.  Set up Python environment (PyTorch/TensorFlow).
-3.  Organize dataset structure (Train/Val/Test split).
+### Phase 1: Setup & Data (In Progress)
+1.  [x] Initialize repository and tools (`main_tool.py`, cropper, annotator).
+2.  [x] Implement automatic annotation using SAM2 with targeted fruitlet filtering.
+3.  [ ] Process full dataset through the SAM pipeline and review with the GUI annotator.
 
-### Phase 2: Training
-1.  **Baseline:** Train a nano/small version of YOLO (e.g., `yolov8n`) to establish a baseline for fruit detection.
-2.  **Tuning:** Experiment with hyperparameters (learning rate, momentum) and augmentation intensity.
+### Phase 2: Training (Upcoming)
+1.  **Baseline:** Train a nano/small version of YOLO (e.g., `yolov8n-seg`) on the segmented dataset.
+2.  **Tuning:** Experiment with hyperparameters and augmentation intensity.
 3.  **Validation:** Monitor mAP@0.5 and mAP@0.5:0.95.
 
-### Phase 3: Counting Logic Implementation
-1.  Develop a script to take an image of a bunch and return the fruit count.
-2.  (Advanced) Implement a video tracking pipeline to count fruits on the *entire* bunch surface as the user pans around it.
+### Phase 3: Counting Logic Implementation & Deployment
+1.  Develop an inference script to take an image of a bunch, run the trained YOLO model, and print the fruit count.
+2.  Evaluate and integrate video tracking (ByteTrack) if moving to video-based counting.
+3.  Export model to ONNX or TFLite for mobile/edge use cases.
 
 ## 5. Evaluation Metrics
-- **Detection Performance:** Precision, Recall, mAP (Mean Average Precision).
+- **Detection Performance:** Precision, Recall, mAP (Mean Average Precision) for both bounding boxes and masks.
 - **Counting Performance:**
     - **MAE (Mean Absolute Error):** Average difference between predicted fruit count and ground truth.
     - **RMSE (Root Mean Square Error):** Penalizes larger errors in fruit counting more heavily.
