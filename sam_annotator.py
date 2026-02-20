@@ -52,6 +52,64 @@ def save_yolo_segmentation(masks, img_w, img_h, output_path):
                 
                 f.write(f"0 {' '.join(normalized_points)}\n")
 
+def filter_fruitlet_masks(masks, image):
+    """
+    Filters out background/irrelevant SAM masks (leaves, sky, branches)
+    to keep specifically black-maroonish and red-orangeish palm oil fruitlets.
+    Assumes image is in RGB format.
+    """
+    filtered_masks = []
+    
+    for mask_data in masks:
+        # SAM returns a binary boolean mask
+        mask = mask_data['segmentation'].astype(np.uint8) * 255
+        
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if not contours:
+            continue
+            
+        cnt = contours[0]
+        area = cv2.contourArea(cnt)
+        if area < 50:
+            continue
+            
+        x, y, w, h = cv2.boundingRect(cnt)
+        if w == 0 or h == 0:
+            continue
+            
+        aspect_ratio = float(w)/h
+        if aspect_ratio < 0.3 or aspect_ratio > 3.3:
+            continue
+            
+        perimeter = cv2.arcLength(cnt, True)
+        if perimeter == 0:
+            continue
+            
+        circularity = 4 * np.pi * (area / (perimeter * perimeter))
+        if circularity < 0.4:
+            continue
+            
+        # Color filtering
+        # Note: image is already RGB here 
+        mean_color = cv2.mean(image, mask=mask)[:3]
+        R, G, B = mean_color  # Since image is RGB, index 0 is R, 1 is G, 2 is B
+        
+        # Reject predominantly green (leaves/branches)
+        if G > R * 1.1 and G > B:
+            continue
+            
+        # Reject predominantly blue (sky)
+        if B > R * 1.1 and B > G:
+            continue
+            
+        # Reject bright white/sky
+        if R > 200 and G > 200 and B > 200:
+            continue
+            
+        filtered_masks.append(mask_data)
+        
+    return filtered_masks
+
 def process_images(image_dir, output_dir, config=None, model_type="tiny", checkpoint=None, device="cuda"):
     # SAM2 Model configurations: (config_file, default_checkpoint, download_url)
     sam2_configs = {
@@ -131,6 +189,9 @@ def process_images(image_dir, output_dir, config=None, model_type="tiny", checkp
 
         # Generate masks
         masks = mask_generator.generate(image)
+
+        # Filter the generated masks keeping only fruitlets
+        masks = filter_fruitlet_masks(masks, image)
 
         # Save annotations
         base_name = os.path.splitext(img_name)[0]
