@@ -143,6 +143,8 @@ class ImageAnnotator:
         # UI State
         self.show_tooltip = True
         
+        self.app_config_file = "annotator_config.json"
+        
         self.setup_ui()
         self.setup_menu()
         self.root.bind("<Delete>", self.delete_selected)
@@ -150,6 +152,8 @@ class ImageAnnotator:
         self.root.bind("<Control-y>", self.redo)
         self.root.bind("<Left>", lambda e: self.prev_image())
         self.root.bind("<Right>", lambda e: self.next_image())
+        
+        self.root.after(100, self.check_recent_session)
 
     def setup_menu(self):
         menubar = tk.Menu(self.root)
@@ -158,6 +162,7 @@ class ImageAnnotator:
         file_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="File", menu=file_menu)
         file_menu.add_command(label="Open Image Folder", command=self.select_folder)
+        file_menu.add_command(label="Open Recent Session", command=lambda: self.check_recent_session(show_error=True))
         file_menu.add_command(label="Select Label Folder (Optional)", command=self.select_label_folder)
         file_menu.add_command(label="Save Annotations", command=self.save_annotations)
         file_menu.add_separator()
@@ -266,10 +271,56 @@ class ImageAnnotator:
         except Exception as e:
             print(f"Error unbinding: {e}")
 
-    def select_folder(self):
-        folder = filedialog.askdirectory(title="Select Image Folder")
+    def load_app_config(self):
+        if os.path.exists(self.app_config_file):
+            try:
+                with open(self.app_config_file, 'r') as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"Error loading app config: {e}")
+        return {}
+
+    def save_app_config(self):
+        config = {
+            "recent_image_folder": self.image_folder,
+            "recent_label_folder": self.label_folder
+        }
+        try:
+            with open(self.app_config_file, 'w') as f:
+                json.dump(config, f)
+        except Exception as e:
+            print(f"Error saving app config: {e}")
+
+    def check_recent_session(self, show_error=False):
+        config = self.load_app_config()
+        img_dir = config.get("recent_image_folder")
+        lbl_dir = config.get("recent_label_folder")
+        
+        found = False
+        if img_dir and os.path.exists(img_dir):
+            found = True
+            msg = f"Found recent session:\n\nImages: {img_dir}\n"
+            if lbl_dir and os.path.exists(lbl_dir):
+                msg += f"Labels: {lbl_dir}\n"
+            msg += "\nDo you want to restore this session?"
+            
+            if messagebox.askyesno("Restore Recent Session", msg):
+                self.select_folder(img_dir)
+                if lbl_dir and os.path.exists(lbl_dir):
+                    self.select_label_folder(lbl_dir)
+        
+        if not found and show_error:
+            messagebox.showinfo("Recent Session", "No recent session found.")
+
+    def select_folder(self, folder_path=None):
+        if folder_path:
+            folder = folder_path
+        else:
+            folder = filedialog.askdirectory(title="Select Image Folder")
+            
         if folder:
             self.image_folder = folder
+            self.save_app_config()
             extensions = ['*.jpg', '*.jpeg', '*.png', '*.bmp']
             self.image_list = []
             for ext in extensions:
@@ -282,10 +333,15 @@ class ImageAnnotator:
             else:
                 messagebox.showinfo("Info", "No images found in folder.")
 
-    def select_label_folder(self):
-        folder = filedialog.askdirectory(title="Select Label Folder (contains .txt files)")
+    def select_label_folder(self, folder_path=None):
+        if folder_path:
+            folder = folder_path
+        else:
+            folder = filedialog.askdirectory(title="Select Label Folder (contains .txt files)")
+            
         if folder:
             self.label_folder = folder
+            self.save_app_config()
             if self.image_list:
                 self.load_image() # Reload to check for labels
 
@@ -618,7 +674,7 @@ class ImageAnnotator:
                     f.write(line + "\n")
             
             self.status_bar.config(text=f"Saved to {label_path}")
-            messagebox.showinfo("Success", "Annotations saved successfully.")
+            # messagebox.showinfo("Success", "Annotations saved successfully.")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save: {e}")
 
