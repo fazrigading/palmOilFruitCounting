@@ -1,75 +1,137 @@
-# Palm Oil Fruit Counting & Analysis
+# Palm Oil Fruit Counting
 
-A computer vision project designed for the accurate detection, counting, and segmentation of individual fruits on Fresh Fruit Bunches (FFB) of Palm Oil. This repository contains data annotation tools and processing scripts to assist in yield estimation.
+A computer vision project for detecting, counting, and segmenting individual fruits on Fresh Fruit Bunches (FFB) of Palm Oil. Uses YOLO format for annotations and supports SAM2-based segmentation.
 
-## 🚀 Featured Tool: Gading's Batch Image Cropper
+## Features
 
-Included in this repository is **Gading's Batch Image Cropper**, a specialized GUI tool built with Tkinter for preparing image datasets.
+- **SAM2-based Segmentation**: Automatic fruit detection using Meta's Segment Anything Model 2
+- **HSV Color-based Annotation**: Alternative annotation method targeting ripe/orange palm oil fruits
+- **YOLO Format Support**: Generates standard YOLOv8/v11 segmentation and detection labels
+- **Batch Image Cropper**: GUI tool for preparing image datasets
+- **Annotation Reviewer**: GUI tool for reviewing and correcting annotations
+- **Data Augmentation**: Image augmentation utilities for training data
 
-### Key Features
-- **Batch Processing:** Easily navigate through large folders of images.
-- **Efficiency Shortcuts:** Use `Enter` or `Right-Click` to **Save & Next** in one action.
-- **Scroll Wheel Selection:** Cycle through aspect ratios (1:1, 16:9, etc.) using the mouse wheel.
-- **Hide Cropped Filter:** Toggle visibility of already processed images to focus on remaining work.
-- **Original Resolution:** Saves crops at their actual pixel dimensions (no forced resizing).
-- **Progress Tracking:** High-visibility "Cropped ✅" indicator in the top-right corner.
-- **Cross-Platform:** Runs on Windows, macOS, and Linux.
+## Installation
 
----
-
-## 🆕 What's New in v1.1
-- **Enhanced Workflow:** Added `Enter` and `Right-click` shortcuts for faster processing.
-- **Smart Filtering:** New "Hide Cropped" checkbox to simplify large dataset management.
-- **UI Improvements:** Moved status indicator to top-right for better visibility.
-- **Resolution Control:** Replaced fixed 640x640 resizing with original resolution saving and live dimension feedback.
-- **Shortcuts Menu:** Added a dedicated menu for quick reference of controls.
-
-### Usage (Developer)
-1. Install dependencies:
-   ```bash
-   pip install Pillow
-   ```
-2. Run the application:
-   ```bash
-   python3 cropper.py
-   ```
-
----
-
-## 📊 Research Data Annotation
-The project also includes `dataAnnotation.py` for automatic fruit segmentation using color-based HSV thresholding.
-
-### Automatic Labeling
-- **HSV Segmentation:** Targets ripe/orange palm oil fruits.
-- **YOLO Format:** Generates standard YOLOv8/v11 segmentation labels (.txt).
-- **Visual Verification:** Saves processed masks in `dataset/visualized` for quality control.
-
----
-
-## 🛠 Installation & Setup
-
-### Prerequisites
-- Python 3.8+
-- OpenCV
-- NumPy
-- Pillow (PIL)
+### Basic Installation
 
 ```bash
-git clone https://github.com/yourusername/palmOilFruitCounting.git
+git clone https://github.com/fazrigading/palmOilFruitCounting.git
 cd palmOilFruitCounting
-pip install opencv-python numpy Pillow
+pip install -e "."
 ```
 
-## 📦 Distribution
-To build a standalone executable of the Cropper tool:
+### With Development Dependencies
+
 ```bash
-pip install pyinstaller
-pyinstaller --onefile --noconsole --name "gadings-batch-image-cropper" --version-file=version_info.txt cropper.py
+pip install -e ".[dev]"
 ```
 
-## 📄 License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+### With SAM2 Support
 
-## 👤 Author
-**Fazri Gading** (FGDX)  
-Contact: [fazrigading@gmail.com](mailto:fazrigading@gmail.com)
+```bash
+pip install -e ".[all]"
+```
+
+## Requirements
+
+- Python >= 3.8
+- torch >= 2.0.0
+- torchvision >= 0.15.0
+- opencv-python-headless >= 4.8.0
+- numpy >= 1.24.0
+- albumentations >= 1.3.0
+- Pillow >= 10.0.0
+- tqdm >= 4.65.0
+- matplotlib >= 3.7.0
+- pyyaml >= 6.0
+
+## Usage
+
+### GUI Applications
+
+```bash
+# Run the batch image cropper
+palm-crop
+
+# Run the annotation reviewer
+palm-annotate
+```
+
+### Command Line Scripts
+
+```bash
+# Automatic SAM2-based annotation
+python scripts/annotate.py --input-dir images/ --output-dir labels/
+
+# HSV color-based annotation
+python scripts/review.py
+
+# Dataset preparation and cropping
+python scripts/crop.py
+
+# Dataset splitting and augmentation
+python scripts/dataset.py
+```
+
+## Project Structure
+
+```tree
+palmOilFruitCounting/
+├── src/palm_oil_counting/
+│   ├── annotation/           # Annotation tools
+│   │   ├── sam_annotator.py  # SAM2-based annotation
+│   │   └── hsv_annotator.py  # HSV color-based annotation
+│   ├── gui/                  # GUI applications
+│   │   ├── cropper.py        # Batch image cropper
+│   │   └── annotator.py      # Annotation reviewer
+│   ├── preprocessing/        # Data preprocessing
+│   │   └── augment.py        # Image augmentation
+│   └── utils/                # Utilities
+│       ├── yolo_format.py    # YOLO format I/O
+│       └── visualization.py  # Visualization tools
+├── tests/                    # Test suite
+├── scripts/                   # Command line scripts
+├── configs/                   # Configuration files
+└── pyproject.toml            # Project configuration
+```
+
+## Testing
+
+```bash
+# Run all tests
+pytest tests/ -v
+
+# Run a specific test file
+pytest tests/test_filter.py -v
+
+# Run with coverage
+pytest tests/ --cov=src/palm_oil_counting --cov-report=html
+```
+
+## Code Style
+
+This project follows PEP 8 conventions with Black formatting (line-length 100).
+
+```bash
+# Format code
+black src/ tests/
+
+# Lint
+ruff check src/ tests/ --fix
+
+# Type checking
+mypy src/
+```
+
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## Author
+
+Fazri Gading - [fazrigading@gmail.com](mailto:fazrigading@gmail.com)
