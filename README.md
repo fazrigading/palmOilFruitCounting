@@ -91,8 +91,17 @@ palmOilFruitCounting/
 │       ├── yolo_format.py    # YOLO format I/O
 │       └── visualization.py  # Visualization tools
 ├── tests/                    # Test suite
-├── scripts/                   # Command line scripts
-├── configs/                   # Configuration files
+│   ├── test_filter.py        # Test filter configuration
+│   └── test_yolo_format.py   # Test bbox/mask annotation in YOLO format
+├── scripts/                  # Command line scripts for entry points
+│   ├── annotate.py           # Annotation tool
+│   ├── crop.py               # Crop tool
+│   ├── dataset.py            # Dataset tool
+│   └── review.py             # Review utility
+├── configs/                  # Configuration files
+│   ├── annotator_config.yaml # Annotator tool config for session
+│   ├── filter_config.yaml    # Filter mask config for review
+│   └── train.yaml            # Training model config
 └── pyproject.toml            # Project configuration
 ```
 
