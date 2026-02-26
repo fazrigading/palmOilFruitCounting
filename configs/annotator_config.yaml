@@ -1,0 +1,5 @@
+# Annotator GUI Configuration
+# Stores recent session information
+
+recent_image_folder: ""
+recent_label_folder: ""
