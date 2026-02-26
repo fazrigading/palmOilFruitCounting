@@ -199,22 +199,32 @@ class TestFilterFruitletMasks:
 ### Project Structure
 
 ```tree
-src/palm_oil_counting/
-├── annotation/           # Annotation tools
-│   ├── sam_annotator.py  # SAM2-based annotation
-│   └── hsv_annotator.py  # HSV color-based annotation
-├── gui/                  # GUI applications
-│   ├── cropper.py        # Batch image cropper
-│   └── annotator.py      # Annotation reviewer
-├── preprocessing/       # Data preprocessing
-│   └── augment.py        # Image augmentation
-└── utils/                # Utilities
-    ├── yolo_format.py    # YOLO format I/O
-    └── visualization.py  # Visualization tools
-
-tests/
-├── test_filter.py        # Tests for filtering functions
-└── test_yolo_format.py  # Tests for YOLO utilities
+palmOilFruitCounting/
+├── src/palm_oil_counting/
+│   ├── annotation/           # Annotation tools
+│   │   ├── sam_annotator.py  # SAM2-based annotation
+│   │   └── hsv_annotator.py  # HSV color-based annotation
+│   ├── gui/                  # GUI applications
+│   │   ├── cropper.py        # Batch image cropper
+│   │   └── annotator.py      # Annotation reviewer
+│   ├── preprocessing/        # Data preprocessing
+│   │   └── augment.py        # Image augmentation
+│   └── utils/                # Utilities
+│       ├── yolo_format.py    # YOLO format I/O
+│       └── visualization.py  # Visualization tools
+├── tests/
+│   ├── test_filter.py        # Tests for filtering functions
+│   └── test_yolo_format.py   # Tests for YOLO utilities
+├── scripts/                  # Command line scripts for entry points
+│   ├── annotate.py           # Annotation tool
+│   ├── crop.py               # Crop tool
+│   ├── dataset.py            # Dataset tool
+│   └── review.py             # Review utility
+├── configs/                  # Configuration files
+│   ├── annotator_config.yaml # Annotator tool config for session
+│   ├── filter_config.yaml    # Filter mask config for review
+│   └── train.yaml            # Training model config
+└── pyproject.toml            # Project configuration
 ```
 
 ### Configuration Files
