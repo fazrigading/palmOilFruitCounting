@@ -212,7 +212,7 @@ palmOilFruitCounting/
 │   └── utils/                # Utilities
 │       ├── yolo_format.py    # YOLO format I/O
 │       └── visualization.py  # Visualization tools
-├── tests/
+├── tests/                    # Test suite
 │   ├── test_filter.py        # Tests for filtering functions
 │   └── test_yolo_format.py   # Tests for YOLO utilities
 ├── scripts/                  # Command line scripts for entry points

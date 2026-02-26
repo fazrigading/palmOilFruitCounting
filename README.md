@@ -33,19 +33,6 @@ pip install -e ".[dev]"
 pip install -e ".[all]"
 ```
 
-## Requirements
-
-- Python >= 3.8
-- torch >= 2.0.0
-- torchvision >= 0.15.0
-- opencv-python-headless >= 4.8.0
-- numpy >= 1.24.0
-- albumentations >= 1.3.0
-- Pillow >= 10.0.0
-- tqdm >= 4.65.0
-- matplotlib >= 3.7.0
-- pyyaml >= 6.0
-
 ## Usage
 
 ### GUI Applications
@@ -91,8 +78,8 @@ palmOilFruitCounting/
 │       ├── yolo_format.py    # YOLO format I/O
 │       └── visualization.py  # Visualization tools
 ├── tests/                    # Test suite
-│   ├── test_filter.py        # Test filter configuration
-│   └── test_yolo_format.py   # Test bbox/mask annotation in YOLO format
+│   ├── test_filter.py        # Tests for filtering functions
+│   └── test_yolo_format.py   # Tests for YOLO utilities
 ├── scripts/                  # Command line scripts for entry points
 │   ├── annotate.py           # Annotation tool
 │   ├── crop.py               # Crop tool
