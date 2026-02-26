@@ -1,0 +1,128 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "palm-oil-counting"
+version = "1.0.0"
+description = "A computer vision project for detecting, counting, and segmenting individual fruits on Fresh Fruit Bunches (FFB) of Palm Oil"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Fazri Gading", email = "fazrigading@gmail.com"}
+]
+maintainers = [
+    {name = "Fazri Gading", email = "fazrigading@gmail.com"}
+]
+keywords = ["computer-vision", "palm-oil", "fruit-counting", "yolo", "segmentation"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+    "opencv-python-headless>=4.8.0",
+    "numpy>=1.24.0",
+    "albumentations>=1.3.0",
+    "Pillow>=10.0.0",
+    "tqdm>=4.65.0",
+    "matplotlib>=3.7.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]
+sam = [
+    "sam2",
+]
+all = [
+    "palm-oil-counting[dev,sam]",
+]
+
+[project.scripts]
+palm-crop = "palm_oil_counting.gui.cropper:main"
+palm-annotate = "palm_oil_counting.gui.annotator:main"
+
+[project.urls]
+Homepage = "https://github.com/fazrigading/palmOilFruitCounting"
+Documentation = "https://github.com/fazrigading/palmOilFruitCounting#readme"
+Repository = "https://github.com/fazrigading/palmOilFruitCounting.git"
+Issues = "https://github.com/fazrigading/palmOilFruitCounting/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+palm_oil_counting = ["py.typed"]
+
+[tool.black]
+line-length = 100
+target-version = ["py38", "py39", "py310", "py311", "py312"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by black)
+    "B008",  # do not perform function calls in argument defaults
+    "B905",  # zip without strict
+]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.pyrefly]
+python-version = "3.8.0"
+ignore-missing-imports = ["*"]
