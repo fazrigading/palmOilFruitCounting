@@ -1,7 +1,8 @@
 # Workspace Folder
+.mypy_cache/
+.ruff_cache/
 .vscode/
 .venv/
-.gemini/
 
 # Python
 __pycache__/
@@ -16,8 +17,8 @@ dist/
 
 # Application Outputs
 **/cropped/
-dataset/
-annotator_config.json
+dataset/*/
+dataset/*.zip
 
 # OS specific
 .DS_Store
