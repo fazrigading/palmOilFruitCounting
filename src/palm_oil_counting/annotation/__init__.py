@@ -6,7 +6,11 @@ from .sam_annotator import (
     save_yolo_bbox,
     save_yolo_segmentation,
 )
-from .hsv_annotator import segment_fruits, get_yolo_segmentation_format
+from .hsv_annotator import (
+    segment_fruits, 
+    get_yolo_segmentation_format,
+    process_directory
+)
 
 __all__ = [
     "process_images",
@@ -15,4 +19,5 @@ __all__ = [
     "save_yolo_segmentation",
     "segment_fruits",
     "get_yolo_segmentation_format",
+    "process_directory"
 ]

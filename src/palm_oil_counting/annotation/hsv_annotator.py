@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 import os
 import glob
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 
 def get_yolo_segmentation_format(
@@ -49,7 +49,7 @@ def get_yolo_segmentation_format(
 
 
 def segment_fruits(
-    image_path: str, output_dir: str, visualize_dir: str = None, min_area: int = 500
+    image_path: str, output_dir: str, visualize_dir: Optional[str] = None, min_area: int = 500
 ) -> None:
     """
     Segments ripe palm oil fruits using HSV color thresholding.
@@ -101,7 +101,7 @@ def segment_fruits(
 
 
 def process_directory(
-    dataset_dir: str, labels_dir: str = None, vis_dir: str = None, min_area: int = 500
+    dataset_dir: str, labels_dir: Optional[str] = None, vis_dir: Optional[str] = None, min_area: int = 500
 ) -> None:
     """
     Process all images in a directory for HSV-based annotation.
