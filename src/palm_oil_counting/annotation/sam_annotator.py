@@ -46,9 +46,7 @@ SAM2_CONFIGS = {
 }
 
 
-def save_yolo_bbox(
-    masks: List[Dict[str, Any]], img_w: int, img_h: int, output_path: str
-) -> None:
+def save_yolo_bbox(masks: List[Dict[str, Any]], img_w: int, img_h: int, output_path: str) -> None:
     """Saves masks as YOLO detection format (class_id center_x center_y width height)."""
     with open(output_path, "w") as f:
         for mask_data in masks:
@@ -69,9 +67,7 @@ def save_yolo_segmentation(
     with open(output_path, "w") as f:
         for mask_data in masks:
             mask = mask_data["segmentation"].astype(np.uint8)
-            contours, _ = cv2.findContours(
-                mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-            )
+            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
             for cnt in contours:
                 epsilon = 0.002 * cv2.arcLength(cnt, True)
@@ -89,9 +85,7 @@ def save_yolo_segmentation(
                 f.write(f"0 {' '.join(normalized_points)}\n")
 
 
-def filter_fruitlet_masks(
-    masks: List[Dict[str, Any]], image: np.ndarray
-) -> List[Dict[str, Any]]:
+def filter_fruitlet_masks(masks: List[Dict[str, Any]], image: np.ndarray) -> List[Dict[str, Any]]:
     """
     Filters out background/irrelevant SAM masks (leaves, sky, branches)
     to keep specifically black-maroonish and red-orangeish palm oil fruitlets.
@@ -194,10 +188,7 @@ def process_images(
 
     if device == "cuda":
         torch.autocast("cuda", dtype=torch.bfloat16).__enter__()
-        if (
-            torch.cuda.is_device_available()
-            and torch.cuda.get_device_properties(0).major >= 8
-        ):
+        if torch.cuda.is_available() and torch.cuda.get_device_properties(0).major >= 8:
             torch.backends.cuda.matmul.allow_tf32 = True
             torch.backends.cudnn.allow_tf32 = True
 
@@ -250,12 +241,8 @@ def process_images(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="SAM Automatic Annotator for Palm Oil Fruit"
-    )
-    parser.add_argument(
-        "--input", type=str, default="dataset", help="Path to images directory"
-    )
+    parser = argparse.ArgumentParser(description="SAM Automatic Annotator for Palm Oil Fruit")
+    parser.add_argument("--input", type=str, default="dataset", help="Path to images directory")
     parser.add_argument(
         "--output",
         type=str,
@@ -268,12 +255,8 @@ if __name__ == "__main__":
         default="tiny",
         help="SAM2 model type (tiny, small, base_plus, large)",
     )
-    parser.add_argument(
-        "--config", type=str, default=None, help="Path to SAM2 config file"
-    )
-    parser.add_argument(
-        "--checkpoint", type=str, default=None, help="Path to SAM2 checkpoint"
-    )
+    parser.add_argument("--config", type=str, default=None, help="Path to SAM2 config file")
+    parser.add_argument("--checkpoint", type=str, default=None, help="Path to SAM2 checkpoint")
     parser.add_argument(
         "--device",
         type=str,
