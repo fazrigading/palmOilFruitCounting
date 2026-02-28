@@ -1,25 +1,50 @@
-# Workspace Folder
-.mypy_cache/
-.ruff_cache/
-.vscode/
-.venv/
-
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
-.env
-
-# PyInstaller / Build
-build/
+*.pyi
+*.egg-info/
+*.egg
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
 dist/
-*.spec
+build/
 
-# Application Outputs
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.*
+
+# Application outputs
 **/cropped/
 dataset/*/
 dataset/*.zip
-
-# OS specific
-.DS_Store
-Thumbs.db
+outputs/
+logs/
+*.pth
+*.pt
