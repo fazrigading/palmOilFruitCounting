@@ -33,9 +33,7 @@ def save_yolo_bbox(
             norm_w = w / img_w
             norm_h = h / img_h
 
-            f.write(
-                f"{class_id} {center_x:.6f} {center_y:.6f} {norm_w:.6f} {norm_h:.6f}\n"
-            )
+            f.write(f"{class_id} {center_x:.6f} {center_y:.6f} {norm_w:.6f} {norm_h:.6f}\n")
 
 
 def save_yolo_segmentation(
@@ -60,9 +58,7 @@ def save_yolo_segmentation(
     with open(output_path, "w") as f:
         for mask_data in masks:
             mask = mask_data["segmentation"].astype(np.uint8)
-            contours, _ = cv2.findContours(
-                mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-            )
+            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
             for cnt in contours:
                 epsilon = epsilon_factor * cv2.arcLength(cnt, True)
@@ -80,9 +76,7 @@ def save_yolo_segmentation(
                 f.write(f"{class_id} {' '.join(normalized_points)}\n")
 
 
-def load_yolo_annotations(
-    label_path: str, img_w: int, img_h: int
-) -> List[Dict[str, Any]]:
+def load_yolo_annotations(label_path: str, img_w: int, img_h: int) -> List[Dict[str, Any]]:
     """
     Loads YOLO format annotations from a label file.
 
@@ -164,9 +158,7 @@ def validate_yolo_label(
         if check_bounds:
             for i, val in enumerate(coords):
                 if val < 0 or val > 1:
-                    errors.append(
-                        f"Line {line_num}: Coordinate {i} out of bounds: {val}"
-                    )
+                    errors.append(f"Line {line_num}: Coordinate {i} out of bounds: {val}")
 
     return len(errors) == 0, errors
 
@@ -177,6 +169,7 @@ def contours_to_yolo_format(
     img_h: int,
     class_id: int = 0,
     epsilon_factor: float = 0.002,
+    min_area: float = 100.0,
 ) -> List[str]:
     """
     Converts OpenCV contours to YOLO segmentation format strings.
@@ -198,6 +191,10 @@ def contours_to_yolo_format(
         approx = cv2.approxPolyDP(cnt, epsilon, True)
 
         if len(approx) < 3:
+            continue
+
+        area = cv2.contourArea(approx)
+        if area < min_area:
             continue
 
         points = approx.flatten()
