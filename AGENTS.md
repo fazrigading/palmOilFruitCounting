@@ -62,8 +62,9 @@ def process_images(image_dir: str, output_dir: str, model_type: str = "tiny") ->
     pass
 ```
 
+- Use built-in generic types (e.g., `list[int]`, `dict[str, Any]`) over `typing` module equivalents when possible
 - Use `Optional[X]` instead of `X | None` for Python < 3.10 compatibility
-- Use `List`, `Dict`, `Tuple` from typing module (not built-in types)
+- Use `List`, `Dict`, `Tuple` from typing module for Python 3.9 compatibility with older code
 - Avoid `Any` unless absolutely necessary
 
 ### Imports
