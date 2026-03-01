@@ -1,5 +1,2 @@
-# Annotator GUI Configuration
-# Stores recent session information
-
-recent_image_folder: ""
-recent_label_folder: ""
+recent_image_folder: /home/fazrigading/ResearchExperiment/palmOilFruitCounting/dataset/images
+recent_label_folder: /home/fazrigading/ResearchExperiment/palmOilFruitCounting/dataset/sam_baseplus/labels_seg
