@@ -70,15 +70,9 @@ class ImageCropper:
 
         shortcut_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Shortcuts", menu=shortcut_menu)
-        shortcut_menu.add_command(
-            label="Crop & Next: Enter / Right-Click", state=tk.DISABLED
-        )
-        shortcut_menu.add_command(
-            label="Cycle Aspect Ratio: Scroll Wheel", state=tk.DISABLED
-        )
-        shortcut_menu.add_command(
-            label="Navigate: Prev/Next buttons", state=tk.DISABLED
-        )
+        shortcut_menu.add_command(label="Crop & Next: Enter / Right-Click", state=tk.DISABLED)
+        shortcut_menu.add_command(label="Cycle Aspect Ratio: Scroll Wheel", state=tk.DISABLED)
+        shortcut_menu.add_command(label="Navigate: Prev/Next buttons", state=tk.DISABLED)
 
         help_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Help", menu=help_menu)
@@ -97,9 +91,9 @@ class ImageCropper:
         top_frame = tk.Frame(self.root, pady=10)
         top_frame.pack(side=tk.TOP, fill=tk.X)
 
-        tk.Button(
-            top_frame, text="Select Image Folder", command=self.select_folder
-        ).pack(side=tk.LEFT, padx=10)
+        tk.Button(top_frame, text="Select Image Folder", command=self.select_folder).pack(
+            side=tk.LEFT, padx=10
+        )
         self.folder_label = tk.Label(top_frame, text="No folder selected", fg="gray")
         self.folder_label.pack(side=tk.LEFT, padx=10)
 
@@ -144,9 +138,7 @@ class ImageCropper:
         self.preview_container = tk.Frame(self.root, bg="black")
         self.preview_container.pack(expand=True, fill=tk.BOTH, padx=10, pady=10)
 
-        self.canvas = tk.Canvas(
-            self.preview_container, bg="gray20", highlightthickness=0
-        )
+        self.canvas = tk.Canvas(self.preview_container, bg="gray20", highlightthickness=0)
         self.canvas.pack(expand=True, fill=tk.BOTH)
 
         self.canvas.bind("<ButtonPress-1>", self.on_press)
@@ -266,9 +258,7 @@ class ImageCropper:
         new_w = int(img_w * ratio)
         new_h = int(img_h * ratio)
 
-        resized_img = self.original_image.resize(
-            (new_w, new_h), Image.Resampling.LANCZOS
-        )
+        resized_img = self.original_image.resize((new_w, new_h), Image.Resampling.LANCZOS)
         self.display_image = ImageTk.PhotoImage(resized_img)
 
         self.canvas.delete("all")
@@ -305,9 +295,7 @@ class ImageCropper:
 
         self.draw_crop_rect()
 
-        self.info_label.config(
-            text=f"{self.current_index + 1} / {len(self.image_list)}"
-        )
+        self.info_label.config(text=f"{self.current_index + 1} / {len(self.image_list)}")
         self.check_if_cropped()
 
     def check_if_cropped(self):
@@ -515,9 +503,7 @@ class ImageCropper:
     def update_nav_buttons(self):
         self.btn_prev.config(state=tk.NORMAL if self.current_index > 0 else tk.DISABLED)
         self.btn_next.config(
-            state=tk.NORMAL
-            if self.current_index < len(self.image_list) - 1
-            else tk.DISABLED
+            state=tk.NORMAL if self.current_index < len(self.image_list) - 1 else tk.DISABLED
         )
         self.btn_crop.config(state=tk.NORMAL)
 
@@ -535,8 +521,12 @@ class ImageCropper:
         if self.return_callback:
             self.return_callback()
 
-
-if __name__ == "__main__":
+def main() -> None:
+    """Entry point for the palm-crop command."""
     root = tk.Tk()
     app = ImageCropper(root)
     root.mainloop()
+
+if __name__ == "__main__":
+    main()
+
