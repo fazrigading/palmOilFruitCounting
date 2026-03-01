@@ -75,7 +75,7 @@ class FilterDialog(tk.Toplevel):
                 frame,
                 text=label,
                 variable=check_var,
-                command=lambda k=key: self.toggle_entry(k),
+                command=lambda k=key: self.toggle_entry(k),  # type: ignore[misc]
             )
             cb.pack(side=tk.LEFT)
 
@@ -114,9 +114,9 @@ class FilterDialog(tk.Toplevel):
         except Exception as e:
             print(f"Error saving prefs: {e}")
 
-    def toggle_entry(self, key: str):
-        state = tk.NORMAL if self.checks[key].get() else tk.DISABLED
-        self.entries[key].config(state=state)
+    def toggle_entry(self, key: str) -> None:
+        state: str = "normal" if self.checks[key].get() else "disabled"
+        self.entries[key].config(state=state)  # type: ignore[call-overload]
 
     def apply(self):
         try:
@@ -376,7 +376,7 @@ class ImageAnnotator:
         if not found and show_error:
             messagebox.showinfo("Recent Session", "No recent session found.")
 
-    def select_folder(self, folder_path: str = None):
+    def select_folder(self, folder_path: Optional[str] = None) -> None:
         if folder_path:
             folder = folder_path
         else:
@@ -397,7 +397,7 @@ class ImageAnnotator:
             else:
                 messagebox.showinfo("Info", "No images found in folder.")
 
-    def select_label_folder(self, folder_path: str = None):
+    def select_label_folder(self, folder_path: Optional[str] = None) -> None:
         if folder_path:
             folder = folder_path
         else:
@@ -682,6 +682,8 @@ class ImageAnnotator:
                 with open(label_path, "r") as f:
                     lines = f.readlines()
 
+                if self.original_image is None:
+                    return
                 img_w, img_h = self.original_image.size
 
                 for line in lines:
@@ -728,6 +730,8 @@ class ImageAnnotator:
             label_path = self.get_annotation_path(img_path)
 
         try:
+            if self.original_image is None:
+                return
             img_w, img_h = self.original_image.size
             with open(label_path, "w") as f:
                 for ann in self.annotations:
@@ -760,8 +764,8 @@ class ImageAnnotator:
 
         x_coords = np_points[:, 0]
         y_coords = np_points[:, 1]
-        w = np.max(x_coords) - np.min(x_coords)
-        h = np.max(y_coords) - np.min(y_coords)
+        w = float(np.max(x_coords)) - np.min(x_coords)
+        h = float(np.max(y_coords)) - np.min(y_coords)
         area = cv2.contourArea(np_points)
 
         aspect_ratio = max(w, h) / min(w, h) if min(w, h) > 0 else 9999
@@ -773,7 +777,7 @@ class ImageAnnotator:
             "ratio": aspect_ratio,
         }
 
-    def _should_remove_annotation(self, metrics: Dict, criteria: Dict) -> bool:
+    def _should_remove_annotation(self, metrics: Optional[Dict], criteria: Dict) -> bool:
         if metrics is None:
             return False
 
@@ -829,7 +833,12 @@ class ImageAnnotator:
             messagebox.showinfo("Filter", "No annotations matched the removal criteria.")
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Entry point for the palm-annotate command."""
     root = tk.Tk()
     app = ImageAnnotator(root)
     root.mainloop()
+
+
+if __name__ == "__main__":
+    main()
