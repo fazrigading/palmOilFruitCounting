@@ -88,7 +88,7 @@ def save_yolo_segmentation(
 def filter_fruitlet_masks(masks: List[Dict[str, Any]], image: np.ndarray) -> List[Dict[str, Any]]:
     """
     Filters out background/irrelevant SAM masks (leaves, sky, branches)
-    to keep specifically black-maroonish and red-orangeish palm oil fruitlets.
+    to keep specifically black, maroon, red, yellow-orangeish palm oil fruitlets.
 
     Args:
         masks: List of SAM mask dictionaries

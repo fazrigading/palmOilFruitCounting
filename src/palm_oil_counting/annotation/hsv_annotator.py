@@ -5,11 +5,12 @@ This module provides automatic segmentation using HSV color thresholding
 for ripe/orange palm oil fruits.
 """
 
+import glob
+import os
+from typing import List, Optional
+
 import cv2
 import numpy as np
-import os
-import glob
-from typing import List, Tuple, Optional
 
 
 def get_yolo_segmentation_format(
@@ -73,9 +74,14 @@ def segment_fruits(
     lower_orange2 = np.array([160, 70, 50])
     upper_orange2 = np.array([180, 255, 255])
 
+    lower_dark = np.array([0, 0, 10])
+    upper_dark = np.array([180, 80, 60])
+
     mask1 = cv2.inRange(hsv, lower_orange1, upper_orange1)
     mask2 = cv2.inRange(hsv, lower_orange2, upper_orange2)
+    mask3 = cv2.inRange(hsv, lower_dark, upper_dark)
     mask = cv2.bitwise_or(mask1, mask2)
+    mask = cv2.bitwise_or(mask, mask3)
 
     kernel = np.ones((5, 5), np.uint8)
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
@@ -101,7 +107,10 @@ def segment_fruits(
 
 
 def process_directory(
-    dataset_dir: str, labels_dir: Optional[str] = None, vis_dir: Optional[str] = None, min_area: int = 500
+    dataset_dir: str,
+    labels_dir: Optional[str] = None,
+    vis_dir: Optional[str] = None,
+    min_area: int = 500,
 ) -> None:
     """
     Process all images in a directory for HSV-based annotation.
@@ -124,13 +133,9 @@ def process_directory(
     image_paths = []
     for ext in image_extensions:
         image_paths.extend(glob.glob(os.path.join(dataset_dir, ext)))
-        image_paths.extend(
-            glob.glob(os.path.join(dataset_dir, "**", ext), recursive=True)
-        )
+        image_paths.extend(glob.glob(os.path.join(dataset_dir, "**", ext), recursive=True))
 
-    image_paths = [
-        p for p in image_paths if "labels" not in p and "visualized" not in p
-    ]
+    image_paths = [p for p in image_paths if "labels" not in p and "visualized" not in p]
     image_paths = sorted(list(set(image_paths)))
 
     print(f"Found {len(image_paths)} images. Starting annotation...")
@@ -140,29 +145,19 @@ def process_directory(
             print(f"Processing image {i}/{len(image_paths)}: {img_path}")
         segment_fruits(img_path, labels_dir, vis_dir, min_area)
 
-    print(
-        f"Annotation complete. Labels saved in '{labels_dir}' and visualizations in '{vis_dir}'."
-    )
+    print(f"Annotation complete. Labels saved in '{labels_dir}' and visualizations in '{vis_dir}'.")
 
 
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="HSV-based automatic annotator for palm oil fruit"
-    )
-    parser.add_argument(
-        "--input", type=str, default="dataset", help="Path to images directory"
-    )
-    parser.add_argument(
-        "--output", type=str, default=None, help="Path to output labels directory"
-    )
+    parser = argparse.ArgumentParser(description="HSV-based automatic annotator for palm oil fruit")
+    parser.add_argument("--input", type=str, default="dataset", help="Path to images directory")
+    parser.add_argument("--output", type=str, default=None, help="Path to output labels directory")
     parser.add_argument(
         "--visualize", type=str, default=None, help="Path to visualization directory"
     )
-    parser.add_argument(
-        "--min-area", type=int, default=500, help="Minimum contour area"
-    )
+    parser.add_argument("--min-area", type=int, default=500, help="Minimum contour area")
 
     args = parser.parse_args()
 
