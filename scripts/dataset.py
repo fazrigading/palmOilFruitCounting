@@ -6,7 +6,7 @@ import shutil
 import argparse
 import random
 from pathlib import Path
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Dict, Any
 
 
 def split_dataset(
@@ -32,14 +32,10 @@ def split_dataset(
     """
     random.seed(seed)
 
-    assert abs(train_ratio + val_ratio + test_ratio - 1.0) < 1e-6, (
-        "Ratios must sum to 1"
-    )
+    assert abs(train_ratio + val_ratio + test_ratio - 1.0) < 1e-6, "Ratios must sum to 1"
 
     image_extensions = {".jpg", ".jpeg", ".png", ".bmp"}
-    image_files = [
-        f for f in os.listdir(images_dir) if Path(f).suffix.lower() in image_extensions
-    ]
+    image_files = [f for f in os.listdir(images_dir) if Path(f).suffix.lower() in image_extensions]
 
     random.shuffle(image_files)
 
@@ -124,7 +120,7 @@ def validate_dataset(
     return len(errors), errors
 
 
-def analyze_dataset(images_dir: str, labels_dir: str) -> dict:
+def analyze_dataset(images_dir: str, labels_dir: str) -> Dict[str, Any]:
     """
     Analyze dataset statistics.
 
@@ -138,7 +134,7 @@ def analyze_dataset(images_dir: str, labels_dir: str) -> dict:
     import cv2
 
     image_extensions = {".jpg", ".jpeg", ".png", ".bmp"}
-    stats = {
+    stats: Dict[str, Any] = {
         "total_images": 0,
         "total_labels": 0,
         "total_objects": 0,
@@ -199,44 +195,26 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Dataset utilities")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    split_parser = subparsers.add_parser(
-        "split", help="Split dataset into train/val/test"
-    )
-    split_parser.add_argument(
-        "--images", type=str, required=True, help="Images directory"
-    )
-    split_parser.add_argument(
-        "--labels", type=str, required=True, help="Labels directory"
-    )
-    split_parser.add_argument(
-        "--output", type=str, required=True, help="Output directory"
-    )
+    split_parser = subparsers.add_parser("split", help="Split dataset into train/val/test")
+    split_parser.add_argument("--images", type=str, required=True, help="Images directory")
+    split_parser.add_argument("--labels", type=str, required=True, help="Labels directory")
+    split_parser.add_argument("--output", type=str, required=True, help="Output directory")
     split_parser.add_argument("--train", type=float, default=0.8, help="Train ratio")
     split_parser.add_argument("--val", type=float, default=0.1, help="Val ratio")
     split_parser.add_argument("--test", type=float, default=0.1, help="Test ratio")
 
     validate_parser = subparsers.add_parser("validate", help="Validate dataset")
-    validate_parser.add_argument(
-        "--images", type=str, required=True, help="Images directory"
-    )
-    validate_parser.add_argument(
-        "--labels", type=str, required=True, help="Labels directory"
-    )
+    validate_parser.add_argument("--images", type=str, required=True, help="Images directory")
+    validate_parser.add_argument("--labels", type=str, required=True, help="Labels directory")
 
     analyze_parser = subparsers.add_parser("analyze", help="Analyze dataset statistics")
-    analyze_parser.add_argument(
-        "--images", type=str, required=True, help="Images directory"
-    )
-    analyze_parser.add_argument(
-        "--labels", type=str, required=True, help="Labels directory"
-    )
+    analyze_parser.add_argument("--images", type=str, required=True, help="Images directory")
+    analyze_parser.add_argument("--labels", type=str, required=True, help="Labels directory")
 
     args = parser.parse_args()
 
     if args.command == "split":
-        split_dataset(
-            args.images, args.labels, args.output, args.train, args.val, args.test
-        )
+        split_dataset(args.images, args.labels, args.output, args.train, args.val, args.test)
     elif args.command == "validate":
         error_count, errors = validate_dataset(args.images, args.labels)
         print(f"Found {error_count} errors:")
