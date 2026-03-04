@@ -48,3 +48,6 @@ outputs/
 logs/
 *.pth
 *.pt
+
+# SAM2 Git Folder
+sam2/
