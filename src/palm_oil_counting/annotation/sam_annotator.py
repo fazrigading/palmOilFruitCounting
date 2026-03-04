@@ -1,7 +1,7 @@
 """
-SAM2-based automatic annotation for palm oil fruit detection.
+SAM2.1-based automatic annotation for palm oil fruit detection.
 
-This module provides automatic segmentation using Meta's Segment Anything Model 2 (SAM2)
+This module provides automatic segmentation using Meta's Segment Anything Model 2.1 (SAM2.1)
 with custom filtering for palm oil fruitlets.
 """
 
@@ -24,24 +24,24 @@ except ImportError:
 
 SAM2_CONFIGS = {
     "tiny": (
-        "sam2_hiera_t.yaml",
-        "sam2_hiera_tiny.pt",
-        "https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_tiny.pt",
+        "configs/sam2.1_hiera_t.yaml",
+        "checkpoints/sam2.1_hiera_tiny.pt",
+        "https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_tiny.pt",
     ),
     "small": (
-        "sam2_hiera_s.yaml",
-        "sam2_hiera_small.pt",
-        "https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_small.pt",
+        "configs/sam2.1_hiera_s.yaml",
+        "checkpoints/sam2.1_hiera_small.pt",
+        "https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_small.pt",
     ),
     "base_plus": (
-        "sam2_hiera_b+.yaml",
-        "sam2_hiera_base_plus.pt",
-        "https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_base_plus.pt",
+        "configs/sam2.1_hiera_b+.yaml",
+        "checkpoints/sam2.1_hiera_base_plus.pt",
+        "https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_base_plus.pt",
     ),
     "large": (
-        "sam2_hiera_l.yaml",
-        "sam2_hiera_large.pt",
-        "https://dl.fbaipublicfiles.com/segment_anything_2/072824/sam2_hiera_large.pt",
+        "configs/sam2.1_hiera_l.yaml",
+        "checkpoints/sam2.1_hiera_large.pt",
+        "https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_large.pt",
     ),
 }
 
@@ -125,12 +125,12 @@ def filter_fruitlet_masks(masks: List[Dict[str, Any]], image: np.ndarray) -> Lis
 
         # Slightly relaxed circularity to account for the fibrous spikes/calyxes
         circularity = 4 * np.pi * (area / (perimeter * perimeter))
-        if circularity < 0.3: 
+        if circularity < 0.3:
             continue
 
         mean_color = cv2.mean(image, mask=mask)[:3]
         R, G, B = mean_color
-        
+
         # Calculate average intensity to detect black/dark fruitlets
         intensity = (R + G + B) / 3.0
 
@@ -165,20 +165,18 @@ def process_images(
     device: str = "cuda",
 ) -> None:
     """
-    Process images through SAM2 for automatic annotation.
+    Process images through SAM2.1 for automatic annotation.
 
     Args:
         image_dir: Path to directory containing images
         output_dir: Path to output directory for labels
-        model_type: SAM2 model type (tiny, small, base_plus, large)
-        config: Path to custom SAM2 config file
-        checkpoint: Path to SAM2 checkpoint file
+        model_type: SAM2.1 model type (tiny, small, base_plus, large)
+        config: Path to custom SAM2.1 config file
+        checkpoint: Path to SAM2.1 checkpoint file
         device: Device to run on (cuda or cpu)
     """
     if not SAM2_AVAILABLE:
-        raise ImportError(
-            "SAM2 is not installed. Install with: pip install git+https://github.com/facebookresearch/sam2.git"
-        )
+        raise ImportError("SAM2.1 is not installed. Install with: `git clone https://github.com/facebookresearch/sam2.git --depth 1``")
 
     if model_type not in SAM2_CONFIGS:
         print(
@@ -204,7 +202,7 @@ def process_images(
             torch.backends.cuda.matmul.allow_tf32 = True
             torch.backends.cudnn.allow_tf32 = True
 
-    print(f"Loading SAM2 model ({model_type}) from {checkpoint} on {device}...")
+    print(f"Loading SAM2.1 model ({model_type}) from {checkpoint} on {device}...")
     sam2 = build_sam2(config_file, ckpt_path=None, device=device)
 
     if checkpoint:
@@ -253,7 +251,7 @@ def process_images(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="SAM Automatic Annotator for Palm Oil Fruit")
+    parser = argparse.ArgumentParser(description="SAM2.1 Automatic Annotator for Palm Oil Fruit")
     parser.add_argument("--input", type=str, default="dataset", help="Path to images directory")
     parser.add_argument(
         "--output",
@@ -265,10 +263,10 @@ if __name__ == "__main__":
         "--model-type",
         type=str,
         default="tiny",
-        help="SAM2 model type (tiny, small, base_plus, large)",
+        help="SAM2.1 model type (tiny, small, base_plus, large)",
     )
-    parser.add_argument("--config", type=str, default=None, help="Path to SAM2 config file")
-    parser.add_argument("--checkpoint", type=str, default=None, help="Path to SAM2 checkpoint")
+    parser.add_argument("--config", type=str, default=None, help="Path to SAM2.1 config file")
+    parser.add_argument("--checkpoint", type=str, default=None, help="Path to SAM2.1 checkpoint")
     parser.add_argument(
         "--device",
         type=str,
