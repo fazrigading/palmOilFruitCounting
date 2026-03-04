@@ -123,21 +123,33 @@ def filter_fruitlet_masks(masks: List[Dict[str, Any]], image: np.ndarray) -> Lis
         if perimeter == 0:
             continue
 
+        # Slightly relaxed circularity to account for the fibrous spikes/calyxes
         circularity = 4 * np.pi * (area / (perimeter * perimeter))
-        if circularity < 0.4:
+        if circularity < 0.3: 
             continue
 
         mean_color = cv2.mean(image, mask=mask)[:3]
         R, G, B = mean_color
+        
+        # Calculate average intensity to detect black/dark fruitlets
+        intensity = (R + G + B) / 3.0
 
-        if G > R * 1.1 and G > B:
-            continue
+        # If the object is dark, we bypass the strict leaf/sky color checks
+        # because low RGB values are highly susceptible to noise and reflection ratios.
+        is_dark_fruitlet = intensity < 75
 
-        if B > R * 1.1 and B > G:
-            continue
+        if not is_dark_fruitlet:
+            # Filter out leaves/weeds (increased multiplier slightly for safety)
+            if G > R * 1.15 and G > B:
+                continue
 
-        if R > 200 and G > 200 and B > 200:
-            continue
+            # Filter out sky/blue tarps
+            if B > R * 1.15 and B > G:
+                continue
+
+            # Filter out bright white background/clouds
+            if R > 200 and G > 200 and B > 200:
+                continue
 
         filtered_masks.append(mask_data)
 
