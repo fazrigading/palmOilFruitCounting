@@ -51,3 +51,6 @@ logs/
 
 # SAM2 Git Folder
 sam2/
+
+# Qwen
+.qwen
