@@ -303,7 +303,7 @@ class SAM3Annotator:
         self,
         image: Union[str, np.ndarray],
         return_format: str = "cv2",
-    ) -> sv.Detections:
+    ):
         """
         Run inference on a single image.
 
@@ -324,7 +324,7 @@ class SAM3Annotator:
         self,
         images: List[Union[str, np.ndarray]],
         batch_size: int = 4,
-    ) -> List[sv.Detections]:
+    ):
         """
         Run inference on a batch of images.
 
