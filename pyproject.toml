@@ -52,8 +52,14 @@ dev = [
 sam = [
     "sam2",
 ]
+sam3 = [
+    "autodistill-sam3",
+    "autodistill>=0.1.0",
+    "supervision>=0.20.0",
+    "roboflow>=1.0.0",
+]
 all = [
-    "palm-oil-counting[dev,sam]",
+    "palm-oil-counting[dev,sam,sam3]",
 ]
 
 [project.scripts]
