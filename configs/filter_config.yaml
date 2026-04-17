@@ -1,21 +1,14 @@
-# Filter configuration for annotation cleanup
-# Values are percentages relative to image size
-
-filter:
-  max_ratio: 1.2
-  min_area: 0.04
-  max_area: 0.6
-  min_width: 1.2
-  max_width: 5.0
-  min_height: 1.0
-  max_height: 12.0
-
-# Filter toggles (set to false to disable)
-enabled:
-  max_ratio: false
-  min_area: true
-  max_area: true
-  min_width: true
-  max_width: true
-  min_height: false
-  max_height: true
+max_area: 0.6
+max_area_checked: true
+max_height: 90.0
+max_height_checked: true
+max_ratio: 1.2
+max_ratio_checked: true
+max_width: 90.0
+max_width_checked: true
+min_area: 0.05
+min_area_checked: true
+min_height: 1.0
+min_height_checked: true
+min_width: 1.0
+min_width_checked: true
