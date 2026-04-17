@@ -2,26 +2,25 @@
 SAM3-based automatic annotation for palm oil fruit detection.
 
 This module provides automatic segmentation using Meta's Segment Anything Model 3 (SAM3)
-with autodistill framework for text-based prompting, optimized for dual GPU batch processing.
+via Roboflow Inference package with text-based prompting.
 """
 
 import os
+import json
 import cv2
-import torch
 import numpy as np
 from tqdm import tqdm
-from typing import List, Dict, Any, Optional, Tuple, Union
+from typing import Any, Optional
 from dataclasses import dataclass
 
 try:
-    from autodistill_sam3 import SegmentAnything3
-    from autodistill.detection import CaptionOntology
-    from autodistill.helpers import load_image
+    from inference.models.sam3 import SegmentAnything3 as SAM3Model
+    from inference.core.entities.requests.sam3 import Sam3Prompt
     import supervision as sv
 
-    SAM3_AVAILABLE = True
+    INFERENCE_AVAILABLE = True
 except ImportError:
-    SAM3_AVAILABLE = False
+    INFERENCE_AVAILABLE = False
 
 
 ONTOLOGY_CLASSES = {
@@ -37,79 +36,32 @@ ONTOLOGY_MINIMAL = {
     "fruitlet": "fruitlet",
 }
 
+CLASS_ID_MAP = {
+    "overripe_fruitlet": 0,
+    "ripe_fruitlet": 1,
+    "unripe_fruitlet": 2,
+    "branch": 3,
+    "sky": 4,
+    "background": 5,
+}
+
 
 @dataclass
 class SAM3Config:
-    model_type: str = "base"
+    model_id: str = "sam3/sam3_final"
+    confidence: float = 0.5
     device: str = "cuda"
-    batch_size: int = 4
-    points_per_side: int = 32
-    pred_iou_thresh: float = 0.7
-    stability_score_thresh: float = 0.92
-
-
-def map_class_name_to_id(class_name: str) -> int:
-    """Map class name to numeric ID for YOLO format."""
-    class_mapping = {
-        "overripe_fruitlet": 0,
-        "ripe_fruitlet": 1,
-        "unripe_fruitlet": 2,
-        "branch": 3,
-        "sky": 4,
-        "background": 5,
-    }
-    return class_mapping.get(class_name, -1)
-
-
-def get_ripeness_color_range(ripeness_type: str) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Get HSV color range for filtering fruitlets by ripeness.
-
-    Args:
-        ripeness_type: Type of ripeness - 'overripe', 'ripe', or 'unripe'
-
-    Returns:
-        Tuple of (lower_bound, upper_bound) HSV arrays
-    """
-    color_ranges = {
-        "overripe": (
-            np.array([0, 50, 20]),
-            np.array([20, 255, 100]),
-        ),
-        "ripe": (
-            np.array([10, 100, 100]),
-            np.array([25, 255, 255]),
-        ),
-        "unripe": (
-            np.array([100, 50, 0]),
-            np.array([140, 255, 80]),
-        ),
-    }
-    return color_ranges.get(ripeness_type, (np.array([0]), np.array([255])))
 
 
 def filter_by_color_and_size(
-    masks: List[Dict[str, Any]],
+    masks: list[dict[str, Any]],
     image: np.ndarray,
     min_area: int = 100,
     max_area: int = 50000,
     min_aspect_ratio: float = 0.3,
     max_aspect_ratio: float = 3.3,
-) -> List[Dict[str, Any]]:
-    """
-    Filter masks based on color, size, and aspect ratio for palm oil fruitlets.
-
-    Args:
-        masks: List of SAM mask dictionaries
-        image: RGB image array (H, W, 3)
-        min_area: Minimum mask area in pixels
-        max_area: Maximum mask area in pixels
-        min_aspect_ratio: Minimum aspect ratio
-        max_aspect_ratio: Maximum aspect ratio
-
-    Returns:
-        Filtered list of mask dictionaries
-    """
+) -> list[dict[str, Any]]:
+    """Filter masks based on color, size, and aspect ratio for palm oil fruitlets."""
     filtered_masks = []
 
     for mask_data in masks:
@@ -160,22 +112,13 @@ def filter_by_color_and_size(
 
 
 def save_yolo_bbox(
-    masks: List[Dict[str, Any]],
+    masks: list[dict[str, Any]],
     img_w: int,
     img_h: int,
     output_path: str,
     class_id: int = 0,
 ) -> None:
-    """
-    Save masks as YOLO detection format (class_id center_x center_y width height).
-
-    Args:
-        masks: List of mask dictionaries with 'bbox' key
-        img_w: Image width in pixels
-        img_h: Image height in pixels
-        output_path: Path to save the label file
-        class_id: Class ID for the objects
-    """
+    """Save masks as YOLO detection format (class_id center_x center_y width height)."""
     with open(output_path, "w") as f:
         for mask_data in masks:
             x, y, w, h = mask_data["bbox"]
@@ -189,24 +132,14 @@ def save_yolo_bbox(
 
 
 def save_yolo_segmentation(
-    masks: List[Dict[str, Any]],
+    masks: list[dict[str, Any]],
     img_w: int,
     img_h: int,
     output_path: str,
     class_id: int = 0,
     epsilon_factor: float = 0.002,
 ) -> None:
-    """
-    Save masks as YOLO segmentation format (class_id x1 y1 x2 y2 ...).
-
-    Args:
-        masks: List of mask dictionaries with 'segmentation' key
-        img_w: Image width in pixels
-        img_h: Image height in pixels
-        output_path: Path to save the label file
-        class_id: Class ID for the objects
-        epsilon_factor: Factor for contour simplification
-    """
+    """Save masks as YOLO segmentation format (class_id x1 y1 x2 y2 ...)."""
     with open(output_path, "w") as f:
         for mask_data in masks:
             mask = mask_data["segmentation"].astype(np.uint8)
@@ -234,15 +167,7 @@ def save_coco_annotations(
     output_path: str,
     categories: Optional[list[dict[str, Any]]] = None,
 ) -> None:
-    """
-    Save annotations in COCO segmentation format.
-
-    Args:
-        results: List of detection results with image_id, category_id, segmentation, bbox
-        images_info: List of image information dicts
-        output_path: Path to save the JSON file
-        categories: List of category dicts
-    """
+    """Save annotations in COCO segmentation format."""
     if categories is None:
         categories = [
             {"id": 0, "name": "overripe_fruitlet", "supercategory": "fruitlet"},
@@ -259,107 +184,109 @@ def save_coco_annotations(
         "categories": categories,
     }
 
-    import json
-
     with open(output_path, "w") as f:
         json.dump(coco_dict, f, indent=2)
 
 
+def parse_inference_results(result, prompts: list[str]) -> list[dict[str, Any]]:
+    """Parse inference results into mask dictionaries."""
+    detections = []
+    prompt_index_map = {}
+
+    for prompt_idx, prompt in enumerate(prompts):
+        prompt_index_map[prompt_idx] = prompt
+
+    for item in result.prompt_results:
+        prompt_text = prompt_index_map.get(item.prompt_index, "")
+        preds = item.predictions
+
+        if len(preds) == 0:
+            continue
+
+        all_polygons_coords = []
+        all_confidences = []
+
+        for p in preds:
+            for polygon_coords in p.masks:
+                all_polygons_coords.append(polygon_coords)
+                all_confidences.append(p.confidence)
+
+        for poly_coords, conf in zip(all_polygons_coords, all_confidences):
+            polygon_np = np.array(poly_coords, dtype=np.int32)
+
+            contours, _ = cv2.findContours(
+                sv.polygon_to_mask(polygon_np).astype(np.uint8),
+                cv2.RETR_EXTERNAL,
+                cv2.CHAIN_APPROX_SIMPLE,
+            )
+
+            if contours:
+                x, y, w, h = cv2.boundingRect(contours[0])
+            else:
+                x, y, w, h = 0, 0, 0, 0
+
+            detections.append(
+                {
+                    "segmentation": sv.polygon_to_mask(polygon_np),
+                    "bbox": [x, y, w, h],
+                    "confidence": conf,
+                    "prompt_index": item.prompt_index,
+                    "prompt_text": prompt_text,
+                }
+            )
+
+    return detections
+
+
 class SAM3Annotator:
-    """
-    SAM3-based automatic annotator for palm oil fruit detection.
-    """
+    """SAM3-based automatic annotator for palm oil fruit detection."""
 
     def __init__(
         self,
-        ontology: Optional[Dict[str, str]] = None,
-        device: str = "cuda",
+        ontology: Optional[dict[str, str]] = None,
         config: Optional[SAM3Config] = None,
     ):
-        """
-        Initialize SAM3 annotator.
-
-        Args:
-            ontology: Dictionary mapping prompts to class names
-            device: Device to run on ('cuda' or 'cpu')
-            config: SAM3 configuration
-        """
-        if not SAM3_AVAILABLE:
+        """Initialize SAM3 annotator."""
+        if not INFERENCE_AVAILABLE:
             raise ImportError(
-                "autodistill-sam3 is not installed. Install with: pip install autodistill-sam3"
+                "inference package is not installed. Install with: pip install inference-gpu[sam3]"
             )
 
-        self.device = device
         self.config = config or SAM3Config()
+        self.ontology = ontology or ONTOLOGY_CLASSES
 
-        if ontology is None:
-            ontology = ONTOLOGY_CLASSES
+        self.prompts = list(self.ontology.keys())
+        self.class_names = list(self.ontology.values())
 
-        self.ontology = CaptionOntology(ontology)
+        self.model = SAM3Model(model_id=self.config.model_id)
 
-        self.base_model = SegmentAnything3(ontology=self.ontology)
+    def predict(self, image_path: str):
+        """Run inference on a single image."""
+        image = cv2.imread(image_path)
+        if image is None:
+            raise ValueError(f"Could not load image: {image_path}")
 
-    def predict(
-        self,
-        image: Union[str, np.ndarray],
-        return_format: str = "cv2",
-    ):
-        """
-        Run inference on a single image.
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        Args:
-            image: Image path or numpy array
-            return_format: Format for loaded image ('cv2' or 'numpy')
+        prompts = [Sam3Prompt(type="text", text=prompt) for prompt in self.prompts]
 
-        Returns:
-            Supervision Detections object
-        """
-        if isinstance(image, str):
-            image = load_image(image, return_format=return_format)
+        result = self.model.segment_image(
+            image,
+            prompts=prompts,
+            format="polygon",
+        )
 
-        detections = self.base_model.predict(image)
-        return detections
+        detections = parse_inference_results(result, self.prompts)
 
-    def predict_batch(
-        self,
-        images: List[Union[str, np.ndarray]],
-        batch_size: int = 4,
-    ):
-        """
-        Run inference on a batch of images.
-
-        Args:
-            images: List of image paths or numpy arrays
-            batch_size: Batch size for processing
-
-        Returns:
-            List of Supervision Detections objects
-        """
-        results = []
-
-        for i in range(0, len(images), batch_size):
-            batch = images[i : i + batch_size]
-            batch_results = [self.predict(img) for img in batch]
-            results.extend(batch_results)
-
-        return results
+        return detections, image
 
     def label(
         self,
         input_dir: str,
         output_dir: str,
         output_format: str = "both",
-        extension: str = ".jpg",
     ) -> None:
-        """
-        Label a directory of images.
-
-        Args:
-            input_dir: Directory containing images
-            output_dir: Directory for output annotations
-            output_format: Output format ('yolo', 'coco', or 'both')
-            extension: Image file extension
-        """
+        """Label a directory of images."""
         os.makedirs(output_dir, exist_ok=True)
 
         image_extensions = (".jpg", ".jpeg", ".png", ".bmp")
@@ -384,30 +311,22 @@ class SAM3Annotator:
         for idx, img_name in enumerate(tqdm(images)):
             img_path = os.path.join(input_dir, img_name)
 
-            detections = self.predict(img_path)
-            image = cv2.imread(img_path)
-            if image is None:
+            try:
+                detections, image = self.predict(img_path)
+            except Exception as e:
+                print(f"Error processing {img_name}: {e}")
                 continue
 
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             h, w = image.shape[:2]
-
             base_name = os.path.splitext(img_name)[0]
 
-            filtered = filter_by_color_and_size(
-                [
-                    {
-                        "segmentation": det.mask,
-                        "bbox": det.bbox,
-                    }
-                    for det in detections
-                ],
-                image,
-            )
+            filtered = filter_by_color_and_size(detections, image)
 
-            class_ids = [
-                map_class_name_to_id(self.ontology.classes()[cid]) for cid in detections.class_id
-            ]
+            class_ids = []
+            for det in filtered:
+                class_name = self.ontology.get(det["prompt_text"], "unknown")
+                class_id = CLASS_ID_MAP.get(class_name, -1)
+                class_ids.append(class_id)
 
             if output_format in ("yolo", "both"):
                 save_yolo_bbox(
@@ -433,8 +352,8 @@ class SAM3Annotator:
                     }
                 )
 
-                for det_idx, det in enumerate(detections):
-                    mask = det.mask.astype(np.uint8)
+                for det_idx, det in enumerate(filtered):
+                    mask = det["segmentation"].astype(np.uint8)
                     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
                     for cnt in contours:
@@ -443,20 +362,18 @@ class SAM3Annotator:
                             continue
 
                         segmentation = [cnt.flatten().tolist()]
+                        x, y, bw, bh = cv2.boundingRect(cnt)
+
+                        cat_id = class_ids[det_idx] if det_idx < len(class_ids) else 0
 
                         all_annotations.append(
                             {
                                 "id": len(all_annotations) + 1,
                                 "image_id": idx + 1,
-                                "category_id": class_ids[det_idx],
+                                "category_id": cat_id,
                                 "segmentation": segmentation,
                                 "area": float(area),
-                                "bbox": [
-                                    float(det.bbox[0]),
-                                    float(det.bbox[1]),
-                                    float(det.bbox[2]),
-                                    float(det.bbox[3]),
-                                ],
+                                "bbox": [float(x), float(y), float(bw), float(bh)],
                                 "iscrowd": 0,
                             }
                         )
@@ -479,27 +396,17 @@ def process_images(
     device: str = "cuda",
     batch_size: int = 4,
 ) -> None:
-    """
-    Process images through SAM3 for automatic annotation.
-
-    Args:
-        input_dir: Path to directory containing images
-        output_dir: Path to output directory for labels
-        output_format: Output format ('yolo', 'coco', or 'both')
-        use_full_ontology: Use full class ontology or minimal
-        device: Device to run on ('cuda' or 'cpu')
-        batch_size: Batch size for processing
-    """
-    if not SAM3_AVAILABLE:
+    """Process images through SAM3 for automatic annotation."""
+    if not INFERENCE_AVAILABLE:
         raise ImportError(
-            "autodistill-sam3 is not installed. Install with: pip install autodistill-sam3"
+            "inference package is not installed. Install with: pip install inference-gpu[sam3]"
         )
 
     ontology = ONTOLOGY_CLASSES if use_full_ontology else ONTOLOGY_MINIMAL
 
-    config = SAM3Config(device=device, batch_size=batch_size)
+    config = SAM3Config(device=device)
 
-    annotator = SAM3Annotator(ontology=ontology, device=device, config=config)
+    annotator = SAM3Annotator(ontology=ontology, config=config)
 
     annotator.label(
         input_dir=input_dir,
@@ -512,17 +419,9 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="SAM3 Automatic Annotator for Palm Oil Fruit")
+    parser.add_argument("--input", type=str, required=True, help="Path to images directory")
     parser.add_argument(
-        "--input",
-        type=str,
-        required=True,
-        help="Path to images directory",
-    )
-    parser.add_argument(
-        "--output",
-        type=str,
-        default="dataset/sam3_annotations",
-        help="Path to output directory",
+        "--output", type=str, default="dataset/sam3_annotations", help="Path to output directory"
     )
     parser.add_argument(
         "--output-format",
@@ -538,18 +437,8 @@ if __name__ == "__main__":
         choices=["full", "minimal"],
         help="Class selection strategy",
     )
-    parser.add_argument(
-        "--device",
-        type=str,
-        default="cuda",
-        help="Device (cuda/cpu)",
-    )
-    parser.add_argument(
-        "--batch-size",
-        type=int,
-        default=4,
-        help="Batch size for GPU processing",
-    )
+    parser.add_argument("--device", type=str, default="cuda", help="Device (cuda/cpu)")
+    parser.add_argument("--batch-size", type=int, default=4, help="Batch size for GPU processing")
 
     args = parser.parse_args()
 
