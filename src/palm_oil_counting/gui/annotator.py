@@ -4,17 +4,17 @@ Annotation Reviewer GUI Tool
 A Tkinter-based tool for reviewing, modifying, and filtering polygon annotations.
 """
 
-import tkinter as tk
-from tkinter import filedialog, messagebox, simpledialog
-from PIL import Image, ImageTk, ImageDraw
-import os
 import glob
+import os
+import tkinter as tk
+from pathlib import Path
+from tkinter import filedialog, messagebox
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
 import cv2
 import numpy as np
 import yaml
-from pathlib import Path
-from typing import Callable, Optional, List, Dict, Any, Tuple
-
+from PIL import Image, ImageTk
 
 CONFIG_DIR = Path(__file__).parent.parent.parent.parent / "configs"
 
@@ -94,7 +94,7 @@ class FilterDialog(tk.Toplevel):
     def load_prefs(self) -> Dict:
         if self.config_file.exists():
             try:
-                with open(self.config_file, "r") as f:
+                with open(self.config_file) as f:
                     data = yaml.safe_load(f) or {}
                 return data
             except Exception as e:
@@ -164,7 +164,7 @@ class ImageAnnotator:
         self.offset_y = 0
 
         self.annotations: List[Dict[str, Any]] = []
-        self.selected_annotation_index = -1
+        self.selected_annotation_indices: set[int] = set()
         self.hovered_annotation_index = -1
 
         self.undo_stack: List[List[Dict]] = []
@@ -236,6 +236,26 @@ class ImageAnnotator:
 
         tk.Frame(toolbar, width=20).pack(side=tk.LEFT)
 
+        self.btn_keep_selected = tk.Button(
+            toolbar,
+            text="Keep Selected",
+            command=self.keep_selected,
+            state=tk.DISABLED,
+            bg="#ccffcc",
+        )
+        self.btn_keep_selected.pack(side=tk.LEFT, padx=2, pady=2)
+
+        self.btn_remove_selected = tk.Button(
+            toolbar,
+            text="Remove Selected",
+            command=self.remove_selected,
+            state=tk.DISABLED,
+            bg="#ffcccc",
+        )
+        self.btn_remove_selected.pack(side=tk.LEFT, padx=2, pady=2)
+
+        tk.Frame(toolbar, width=20).pack(side=tk.LEFT)
+
         tk.Button(toolbar, text="<< Prev", command=self.prev_image).pack(
             side=tk.LEFT, padx=2, pady=2
         )
@@ -297,7 +317,7 @@ class ImageAnnotator:
         self.lb_annotations = tk.Listbox(
             self.listbox_frame,
             yscrollcommand=self.scrollbar.set,
-            selectmode=tk.SINGLE,
+            selectmode=tk.EXTENDED,
             font=("Arial", 10),
         )
         self.scrollbar.config(command=self.lb_annotations.yview)
@@ -336,7 +356,7 @@ class ImageAnnotator:
     def load_app_config(self) -> Dict:
         if self.app_config_file.exists():
             try:
-                with open(self.app_config_file, "r") as f:
+                with open(self.app_config_file) as f:
                     data = yaml.safe_load(f) or {}
                 return data
             except Exception as e:
@@ -451,12 +471,15 @@ class ImageAnnotator:
         for idx, ann in enumerate(self.annotations):
             pts = self.transform_points_to_canvas(ann["points"])
 
+            is_selected = idx in self.selected_annotation_indices
+            is_hovered = idx == self.hovered_annotation_index
+
             color = "red"
             width = 2
-            if idx == self.selected_annotation_index:
+            if is_selected:
                 color = "green"
                 width = 3
-            elif idx == self.hovered_annotation_index:
+            elif is_hovered:
                 color = "yellow"
                 width = 2
 
@@ -466,10 +489,10 @@ class ImageAnnotator:
                     flat_pts, outline=color, fill="", width=width, tags=f"ann_{idx}"
                 )
 
-                if idx == self.selected_annotation_index:
+                if is_selected:
                     for px, py in pts:
                         self.canvas.create_oval(
-                            px - 3, py - 3, px + 3, py + 3, fill=color, outline=color
+                            px - 3, py - 3, px + 3, py + 3, fill="", outline="green", width=2
                         )
 
     def update_listbox(self):
@@ -479,31 +502,40 @@ class ImageAnnotator:
                 tk.END, f"ID {idx}: Class {ann['class_id']} ({len(ann['points'])} pts)"
             )
 
-        if self.selected_annotation_index != -1:
-            self.lb_annotations.selection_set(self.selected_annotation_index)
-            self.lb_annotations.see(self.selected_annotation_index)
+        self.lb_annotations.selection_clear(0, tk.END)
+        for idx in self.selected_annotation_indices:
+            if 0 <= idx < len(self.annotations):
+                self.lb_annotations.selection_set(idx)
+
+        if self.selected_annotation_indices:
+            first_sel = min(self.selected_annotation_indices)
+            self.lb_annotations.see(first_sel)
+
+        self._update_multi_select_buttons()
 
     def on_listbox_select(self, event):
         selection = self.lb_annotations.curselection()
         if selection:
-            idx = selection[0]
-            self.selected_annotation_index = idx
+            self.selected_annotation_indices = set(selection)
             self.update_properties_panel()
             self.redraw()
         else:
-            self.selected_annotation_index = -1
+            self.selected_annotation_indices = set()
             self.update_properties_panel()
             self.redraw()
 
+        self._update_multi_select_buttons()
+
     def update_properties_panel(self):
-        if self.selected_annotation_index == -1 or not self.original_image:
+        if not self.selected_annotation_indices or not self.original_image:
             self.lbl_prop_area.config(text="Area: N/A")
             self.lbl_prop_ratio.config(text="Ratio: N/A")
             self.lbl_prop_wh.config(text="W/H: N/A")
             return
 
         try:
-            ann = self.annotations[self.selected_annotation_index]
+            first_idx = min(self.selected_annotation_indices)
+            ann = self.annotations[first_idx]
             points = ann["points"]
             if not points:
                 return
@@ -524,7 +556,11 @@ class ImageAnnotator:
             w_pct = (w / img_w) * 100
             h_pct = (h / img_h) * 100
 
-            self.lbl_prop_area.config(text=f"Area: {area_pct:.2f}%")
+            count = len(self.selected_annotation_indices)
+            if count > 1:
+                self.lbl_prop_area.config(text=f"Selected: {count} | First area: {area_pct:.2f}%")
+            else:
+                self.lbl_prop_area.config(text=f"Area: {area_pct:.2f}%")
             self.lbl_prop_ratio.config(text=f"Ratio: {aspect_ratio:.2f}")
             self.lbl_prop_wh.config(text=f"W: {w_pct:.1f}%  H: {h_pct:.1f}%")
 
@@ -559,7 +595,17 @@ class ImageAnnotator:
                 clicked_idx = idx
                 break
 
-        self.selected_annotation_index = clicked_idx
+        if event.state & 0x4:
+            if clicked_idx in self.selected_annotation_indices:
+                self.selected_annotation_indices.discard(clicked_idx)
+            elif clicked_idx != -1:
+                self.selected_annotation_indices.add(clicked_idx)
+        else:
+            if clicked_idx != -1:
+                self.selected_annotation_indices = {clicked_idx}
+            else:
+                self.selected_annotation_indices = set()
+
         self.update_listbox()
         self.update_properties_panel()
         self.redraw()
@@ -611,7 +657,7 @@ class ImageAnnotator:
         self.redo_stack.append(current_state)
 
         self.annotations = self.undo_stack.pop()
-        self.selected_annotation_index = -1
+        self.selected_annotation_indices = set()
         self.update_listbox()
         self.update_properties_panel()
         self.redraw()
@@ -628,22 +674,90 @@ class ImageAnnotator:
         self.undo_stack.append(current_state)
 
         self.annotations = self.redo_stack.pop()
-        self.selected_annotation_index = -1
+        self.selected_annotation_indices = set()
         self.update_listbox()
         self.update_properties_panel()
         self.redraw()
         self.status_bar.config(text="Redo successful.")
 
     def delete_selected(self, event=None):
-        if self.selected_annotation_index != -1:
+        if self.selected_annotation_indices:
             self.save_state()
-            del self.annotations[self.selected_annotation_index]
-            self.selected_annotation_index = -1
+            indices_to_delete = sorted(self.selected_annotation_indices, reverse=True)
+            for idx in indices_to_delete:
+                if 0 <= idx < len(self.annotations):
+                    del self.annotations[idx]
+
+            self.selected_annotation_indices = set()
             self.save_annotations()
             self.update_listbox()
             self.update_properties_panel()
             self.redraw()
-            self.status_bar.config(text="Annotation deleted. Remember to Save.")
+            self.status_bar.config(
+                text=f"Deleted {len(indices_to_delete)} annotation(s). Remember to Save."
+            )
+
+    def _update_multi_select_buttons(self) -> None:
+        """Enable or disable multi-selection buttons based on selection state."""
+        state = tk.NORMAL if self.selected_annotation_indices else tk.DISABLED
+        self.btn_keep_selected.config(state=state)
+        self.btn_remove_selected.config(state=state)
+
+    def keep_selected(self) -> None:
+        """Remove all unselected annotations, keeping only the selected ones."""
+        if not self.selected_annotation_indices:
+            return
+
+        n_total = len(self.annotations)
+        n_selected = len(self.selected_annotation_indices)
+
+        confirm = messagebox.askyesno(
+            "Keep Selected",
+            f"This will remove {n_total - n_selected} unselected annotation(s)\n"
+            f"and keep {n_selected} selected annotation(s). Proceed?",
+        )
+        if not confirm:
+            return
+
+        self.save_state()
+        indices_to_keep = sorted(self.selected_annotation_indices)
+        new_annotations = [
+            self.annotations[idx] for idx in indices_to_keep if idx < len(self.annotations)
+        ]
+        self.annotations = new_annotations
+        self.selected_annotation_indices = set()
+        self.save_annotations()
+        self.update_listbox()
+        self.update_properties_panel()
+        self.redraw()
+        self.status_bar.config(text=f"Kept {n_selected} annotation(s).")
+
+    def remove_selected(self) -> None:
+        """Remove the selected annotations, preserving the unselected ones."""
+        if not self.selected_annotation_indices:
+            return
+
+        n_selected = len(self.selected_annotation_indices)
+
+        confirm = messagebox.askyesno(
+            "Remove Selected",
+            f"This will remove {n_selected} selected annotation(s). Proceed?",
+        )
+        if not confirm:
+            return
+
+        self.save_state()
+        indices_to_remove = sorted(self.selected_annotation_indices, reverse=True)
+        for idx in indices_to_remove:
+            if 0 <= idx < len(self.annotations):
+                del self.annotations[idx]
+
+        self.selected_annotation_indices = set()
+        self.save_annotations()
+        self.update_listbox()
+        self.update_properties_panel()
+        self.redraw()
+        self.status_bar.config(text=f"Removed {n_selected} selected annotation(s).")
 
     def next_image(self):
         if self.current_index < len(self.image_list) - 1:
@@ -679,7 +793,7 @@ class ImageAnnotator:
 
         if os.path.exists(label_path):
             try:
-                with open(label_path, "r") as f:
+                with open(label_path) as f:
                     lines = f.readlines()
 
                 if self.original_image is None:
@@ -709,11 +823,12 @@ class ImageAnnotator:
                 )
             except Exception as e:
                 print(f"Error loading labels: {e}")
-                self.status_bar.config(text=f"Error loading labels")
+                self.status_bar.config(text="Error loading labels")
         else:
             self.status_bar.config(text="No labels found")
 
-        self.selected_annotation_index = -1
+        self.selected_annotation_indices = set()
+        self._update_multi_select_buttons()
 
     def save_annotations(self):
         if not self.image_list:
@@ -824,7 +939,7 @@ class ImageAnnotator:
                 for idx in sorted(to_remove, reverse=True):
                     del self.annotations[idx]
 
-                self.selected_annotation_index = -1
+                self.selected_annotation_indices = set()
                 self.update_listbox()
                 self.update_properties_panel()
                 self.redraw()
